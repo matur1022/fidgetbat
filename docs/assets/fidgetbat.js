@@ -408,8 +408,6 @@
     }
   }
 
-  const TYPE_TAG = { bat: '🏏', ball: '⚪', trail: '💫', fx: '✨' };
-
   function renderPanel() {
     const p = S.panel;
     p.innerHTML = '';
@@ -441,42 +439,52 @@
     title.textContent = `${DIFF().label}: ${cp.hits.toLocaleString()} hits · best combo x${cp.comboBest}`;
     p.appendChild(title);
 
-    // Basics — always available.
-    const basicsH = document.createElement('div');
-    basicsH.className = 'fb-panel-section';
-    basicsH.textContent = 'Basics';
-    p.appendChild(basicsH);
-    for (const s of DEFAULT_SKINS) p.appendChild(itemButton(s, true, null));
-
-    // This difficulty's reward track, in unlock order.
-    const trackH = document.createElement('div');
-    trackH.className = 'fb-panel-section';
-    trackH.textContent = `${DIFF().label} rewards (${REWARDS[S.diff].filter((r) => cp.hits >= r.hits).length}/${REWARDS[S.diff].length})`;
-    p.appendChild(trackH);
-    for (const r of REWARDS[S.diff]) p.appendChild(itemButton(r, cp.hits >= r.hits, r.hits));
-
-    // Anything earned on OTHER difficulties is equippable here too.
-    const elsewhere = DIFFICULTIES.filter((d) => d.id !== S.diff)
-      .flatMap((d) => REWARDS[d.id].filter((r) => S.prog[d.id].hits >= r.hits));
-    if (elsewhere.length) {
+    // One clearly-separated group per slot type. Each group holds the
+    // always-available basic, this difficulty's track in unlock order,
+    // then anything already earned on other difficulties.
+    const GROUPS = [
+      { type: 'bat', label: '🏏 Bats' },
+      { type: 'ball', label: '⚪ Balls' },
+      { type: 'trail', label: '💫 Trails' },
+      { type: 'fx', label: '✨ Hit Effects' },
+    ];
+    const otherDiffs = DIFFICULTIES.filter((d) => d.id !== S.diff);
+    for (const g of GROUPS) {
+      const track = REWARDS[S.diff].filter((r) => r.type === g.type);
+      const unlockedCount = track.filter((r) => cp.hits >= r.hits).length;
       const h = document.createElement('div');
       h.className = 'fb-panel-section';
-      h.textContent = 'Earned on other difficulties';
+      h.textContent = `${g.label} · ${unlockedCount}/${track.length}`;
       p.appendChild(h);
-      for (const r of elsewhere) p.appendChild(itemButton(r, true, null));
+      for (const s of DEFAULT_SKINS.filter((s) => s.type === g.type)) {
+        p.appendChild(itemButton(s, true, null, null));
+      }
+      for (const r of track) {
+        p.appendChild(itemButton(r, cp.hits >= r.hits, r.hits, null));
+      }
+      for (const d of otherDiffs) {
+        for (const r of REWARDS[d.id].filter((r) => r.type === g.type && S.prog[d.id].hits >= r.hits)) {
+          p.appendChild(itemButton(r, true, null, d.label));
+        }
+      }
     }
   }
 
-  function itemButton(item, unlocked, needHits) {
+  function itemButton(item, unlocked, needHits, originLabel) {
     const btn = document.createElement('button');
     btn.className = 'fb-item';
-    const tag = TYPE_TAG[item.type] || '';
     if (S.sel[item.type] === item.id) btn.classList.add('fb-selected');
     if (!unlocked) {
       btn.classList.add('fb-locked');
-      btn.textContent = `🔒 ${tag} ${item.label} — ${needHits.toLocaleString()}`;
+      btn.textContent = `🔒 ${item.label} — ${needHits.toLocaleString()}`;
     } else {
-      btn.textContent = `${tag} ${item.label}`;
+      btn.textContent = item.label;
+      if (originLabel) {
+        const origin = document.createElement('span');
+        origin.className = 'fb-item-origin';
+        origin.textContent = originLabel;
+        btn.appendChild(origin);
+      }
       if (item.type === 'ball') {
         btn.title = (BALL_PHYS[item.id] || BALL_PHYS.baseball).note;
       }

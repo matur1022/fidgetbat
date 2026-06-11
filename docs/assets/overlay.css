@@ -177,11 +177,23 @@
 }
 
 .fb-panel-section {
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.7);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  margin-top: 6px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.fb-item-origin {
+  float: right;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  padding: 1px 7px;
+  margin-left: 8px;
 }
 
 .fb-item {
