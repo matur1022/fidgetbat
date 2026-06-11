@@ -60,7 +60,7 @@
   .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
 
   /* ---- hero ---- */
-  header.wrap { position: relative; padding: 96px 24px 56px; text-align: center; }
+  header.wrap { position: relative; padding: 76px 24px 44px; text-align: center; }
   .badge {
     display: inline-block; border: 1px solid var(--line); border-radius: 999px;
     padding: 7px 16px; font-size: 13px; color: var(--dim); margin-bottom: 26px;
@@ -106,7 +106,7 @@
   /* ---- marquee ---- */
   .marquee {
     border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
-    overflow: hidden; white-space: nowrap; padding: 13px 0; margin: 60px 0 0;
+    overflow: hidden; white-space: nowrap; padding: 13px 0; margin: 44px 0 0;
     background: rgba(255,255,255,0.02);
   }
   .marquee-inner { display: inline-block; animation: scroll 22s linear infinite; }
@@ -115,7 +115,7 @@
   @keyframes scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
   /* ---- sections ---- */
-  section.wrap { padding: 110px 24px 88px; position: relative; }
+  section.wrap { padding: 72px 24px 60px; position: relative; }
   .kicker {
     font-size: 13px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--green);
     margin-bottom: 18px; font-weight: 500;
@@ -137,8 +137,9 @@
   .yt-dot { width: 11px; height: 11px; border-radius: 50%; background: rgba(255,255,255,0.12); }
   .yt-dot.red { background: #ff5c5c; }
   .yt-url {
-    flex: 1; margin-left: 10px; background: rgba(255,255,255,0.06); border-radius: 8px;
+    flex: 1; min-width: 0; margin-left: 10px; background: rgba(255,255,255,0.06); border-radius: 8px;
     font-size: 12px; color: var(--dim); padding: 6px 12px; text-align: left;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   #movie_player {
     position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden;
@@ -280,6 +281,34 @@
   footer a { color: var(--cyan); text-decoration: none; }
   footer a:hover { text-decoration: underline; }
   footer .brand { font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 18px; color: var(--ink); margin-bottom: 10px; }
+
+  /* ---- mobile ---- */
+  @media (max-width: 560px) {
+    header.wrap { padding: 52px 18px 36px; }
+    section.wrap { padding: 52px 18px 44px; }
+    .badge { font-size: 12px; padding: 6px 12px; margin-bottom: 20px; }
+    .cta { font-size: 16px; padding: 14px 24px; }
+    .cta-ghost { font-size: 14px; padding: 13px 18px; }
+    .marquee { margin-top: 36px; }
+    .demo-shell { padding: 10px; }
+    .demo-gate .cta { font-size: 14px; padding: 12px 18px; }
+    .dg-inner h3 { font-size: 22px; }
+    .ladder { gap: 3px; height: 150px; }
+    .rung .num { display: none; }
+    .rung:first-child .num, .rung:last-child .num { display: block; font-size: 10px; transform: none; }
+    .ladder-cap { font-size: 12px; gap: 10px; }
+    .step { padding: 16px; gap: 14px; }
+    .feat { padding: 18px; }
+    .card { padding: 22px 18px; }
+    /* The demo HUD gets tight on small screens — compact it and
+       clear the fake-video chrome out of its way. */
+    .fv-title { display: none; }
+    .fv-caption { top: 32%; }
+    .fb-hud { gap: 4px; top: 8px; right: 8px; }
+    .fb-next { padding: 4px 8px; font-size: 11px; }
+    .fb-next-track { width: 44px; }
+    .fb-pill, .fb-close { font-size: 12px; padding: 6px 9px; }
+  }
 
   @media (prefers-reduced-motion: reduce) {
     .blob, .doodad, .wiggle, .marquee-inner, .yt-progress i,
@@ -452,8 +481,9 @@
   // Auto-start the demo once the player exists.
   setTimeout(() => { if (window.__fidgetBatToggle) window.__fidgetBatToggle(); }, 300);
 
-  // Demo gate: after enough hits this visit, pitch the extension.
-  const DEMO_HIT_LIMIT = 25;
+  // Demo gate: after a good long play this visit, pause (don't remove!) the
+  // toy and pitch the extension — the frozen game stays visible behind it.
+  const DEMO_HIT_LIMIT = 75;
   let demoStartHits = null;
   const gateEl = document.getElementById('demo-gate');
   const gateTimer = setInterval(() => {
@@ -463,7 +493,7 @@
     if (demoStartHits === null) demoStartHits = total;
     if (total - demoStartHits >= DEMO_HIT_LIMIT) {
       clearInterval(gateTimer);
-      window.__fidgetBatToggle(); // stop the game (progress is already saved)
+      window.__fidgetBatPause(true); // freeze in place, keep it on screen
       gateEl.classList.add('show');
     }
   }, 400);

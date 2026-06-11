@@ -139,7 +139,7 @@
     diff: 'pro',
     prog: { rookie: { hits: 0, comboBest: 0 }, pro: { hits: 0, comboBest: 0 }, allstar: { hits: 0, comboBest: 0 }, legend: { hits: 0, comboBest: 0 } },
     sel: { bat: 'wood', ball: 'baseball', trail: 'none', fx: 'nofx' },
-    ghost: false, muted: false,
+    ghost: false, muted: false, paused: false,
     freeze: 0, shakeMag: 0,
     golden: false, goldenTtl: 0, goldenTimer: 50,
     swingCool: 0,
@@ -242,6 +242,7 @@
     initWorld();
     addInput();
     S.active = true;
+    S.paused = false;
     S.lastT = 0;
     S.raf = requestAnimationFrame(loop);
     updateHUD();
@@ -545,7 +546,7 @@
   }
 
   function onMouseDown(e) {
-    if (!S.overlay || e.button !== 0) return;
+    if (!S.overlay || S.paused || e.button !== 0) return;
     if (S.hud.contains(e.target) || S.panel.contains(e.target)) return;
     const r = S.overlay.getBoundingClientRect();
     const mx = e.clientX - r.left, my = e.clientY - r.top;
@@ -1062,7 +1063,11 @@
     if (!S.lastT) S.lastT = t;
     let frame = Math.min((t - S.lastT) / 1000, 1 / 30);
     S.lastT = t;
-    if (S.freeze > 0) {
+    if (S.paused) {
+      // Externally paused (e.g. the website's demo gate) — keep rendering,
+      // hold the world still.
+      S.acc = 0;
+    } else if (S.freeze > 0) {
       // Hitstop: hold the world for a beat on heavy impacts.
       S.freeze -= frame;
     } else {
@@ -1497,4 +1502,5 @@
   window.__fidgetBatState = S;
   window.__fidgetBatStep = (dt) => stepPhysics(dt);
   window.__fidgetBatRender = () => render();
+  window.__fidgetBatPause = (v) => { S.paused = !!v; };
 })();
