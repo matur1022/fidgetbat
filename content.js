@@ -477,6 +477,9 @@
       btn.textContent = `🔒 ${tag} ${item.label} — ${needHits.toLocaleString()}`;
     } else {
       btn.textContent = `${tag} ${item.label}`;
+      if (item.type === 'ball') {
+        btn.title = (BALL_PHYS[item.id] || BALL_PHYS.baseball).note;
+      }
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         S.sel[item.type] = item.id;
@@ -502,7 +505,7 @@
     };
     const r = Math.min(Math.max(Math.min(S.w, S.h) * 0.030, 9), 22) * d.ballScale;
     S.ball = {
-      x: S.w * 0.35, y: S.h * 0.25, r,
+      x: S.w * 0.35, y: S.h * 0.25, r, rBase: r,
       vx: 120, vy: 0, rot: 0,
       squash: 0, sqAng: 0,
       trail: [],
@@ -648,6 +651,42 @@
   };
   function batVoice() {
     return BAT_VOICES[S.sel.bat] || BAT_VOICES.wood;
+  }
+
+  // ----- Per-ball physics personality -----------------------------------------
+  // Every ball plays differently: grav = gravity ×, rest = bounciness ×,
+  // drag = air resistance ×, launch = how hard the bat sends it ×,
+  // wobble = random mid-air swerve, size = radius ×, speed = speed-cap ×,
+  // slide = floor friction (closer to 1 = slipperier).
+  const BALL_PHYS = {
+    baseball:   { note: 'Classic — flies true and steady' },
+    tennis:     { grav: 0.95, rest: 1.12, launch: 1.15, size: 0.9, speed: 1.15, note: 'Light & extra bouncy' },
+    basketball: { grav: 1.1, rest: 0.95, launch: 0.85, size: 1.3, drag: 1.2, note: 'Big, heavy, deep bounces' },
+    beachball:  { grav: 0.45, drag: 3.5, rest: 1.05, launch: 0.8, size: 1.4, speed: 0.7, note: 'Floats like a feather' },
+    ducky:      { grav: 0.9, wobble: 0.6, note: 'Wobbles unpredictably' },
+    watermelon: { grav: 1.25, rest: 0.7, launch: 0.75, size: 1.25, drag: 1.3, note: 'Heavy — barely bounces' },
+    eyeball:    { wobble: 0.35, rest: 1.05, note: 'Twitchy little thing' },
+    disco:      { rest: 1.15, speed: 1.1, note: 'Party bounce, quick moves' },
+    sunball:    { grav: 0.55, drag: 1.8, size: 1.15, note: 'Drifts down like a sunset' },
+    fireball:   { speed: 1.3, drag: 0.5, launch: 1.2, grav: 0.9, note: 'Blazing fast, cuts the air' },
+    galaxy:     { grav: 0.35, drag: 0.8, rest: 1.05, speed: 1.1, note: 'Low gravity — space rules' },
+    cricket:    { grav: 1.2, rest: 0.85, launch: 1.1, size: 0.85, speed: 1.2, note: 'Dense and rocket-quick' },
+    plasma:     { rest: 1.2, launch: 1.25, speed: 1.25, grav: 0.85, note: 'Super lively, launches hard' },
+    magma:      { grav: 1.3, launch: 1.15, rest: 0.9, drag: 0.9, note: 'Heavy fire — slams down' },
+    tornado:    { wobble: 1.2, grav: 0.8, rest: 1.1, note: 'Chaotic, swerves mid-air' },
+    glacier:    { grav: 1.05, rest: 0.8, drag: 0.7, slide: 0.999, note: 'Slides, barely bounces' },
+    eclipse:    { grav: 0.6, drag: 1.2, note: 'Eerily slow descent' },
+    nebula:     { grav: 0.5, drag: 2, size: 1.2, note: 'A drifting cloud' },
+    allstarorb: { rest: 1.1, launch: 1.1, speed: 1.1, note: 'Tuned like a pro ball' },
+    phoenix:    { grav: 0.4, rest: 1.15, launch: 1.1, note: 'Barely falls — it has wings' },
+    kraken:     { grav: 1.15, drag: 2.5, launch: 0.9, note: 'Heavy, drags like deep water' },
+    celestial:  { grav: 0.45, rest: 1.1, note: 'Heavenly float' },
+    genesis:    { rest: 1.25, launch: 1.15, note: 'Bouncy and alive' },
+    universe:   { grav: 0.3, drag: 0.9, speed: 1.05, size: 1.15, note: 'Cosmic drift — its own rules' },
+  };
+  const PHYS_DEFAULTS = { grav: 1, rest: 1, drag: 1, launch: 1, wobble: 0, size: 1, speed: 1, slide: 0.99 };
+  function ballPhys() {
+    return { ...PHYS_DEFAULTS, ...(BALL_PHYS[S.sel.ball] || {}) };
   }
 
   // Oscillator with attack/decay envelope and optional pitch glide.
@@ -827,16 +866,24 @@
     wallPoint(bat.B, bat.thick * 0.5);
     if (!S.grabbing) wallPoint(bat.A, bat.thick * 0.5);
 
-    // --- Ball: explicit Euler ---
-    ball.vy += g * dt;
-    ball.vx *= 0.9995;
-    ball.vy *= 0.9995;
+    // --- Ball: explicit Euler, shaped by the equipped ball's personality ---
+    const phys = ballPhys();
+    ball.r = ball.rBase * phys.size;
+    ball.vy += g * dt * phys.grav;
+    const air = Math.max(1 - 0.0005 * phys.drag, 0.99);
+    ball.vx *= air;
+    ball.vy *= air;
+    if (phys.wobble) {
+      // Mid-air swerve — duckies flutter, tornadoes rage.
+      ball.vx += (Math.random() - 0.5) * phys.wobble * S.h * 2.4 * dt;
+      ball.vy += (Math.random() - 0.5) * phys.wobble * S.h * 1.2 * dt;
+    }
     ball.x += ball.vx * dt;
     ball.y += ball.vy * dt;
     ball.rot += (ball.vx / ball.r) * dt * 0.5;
     S.sinceHitDist += Math.hypot(ball.vx, ball.vy) * dt;
 
-    const e = 0.84;
+    const e = Math.min(0.84 * phys.rest, 0.98);
     let bounced = false;
     if (ball.x < ball.r) { ball.x = ball.r; ball.vx = -ball.vx * e; bounced = true; }
     if (ball.x > S.w - ball.r) { ball.x = S.w - ball.r; ball.vx = -ball.vx * e; bounced = true; }
@@ -844,7 +891,7 @@
     if (ball.y > S.h - ball.r) {
       ball.y = S.h - ball.r;
       ball.vy = -ball.vy * e;
-      ball.vx *= 0.99; // floor friction
+      ball.vx *= phys.slide; // floor friction — glaciers slide
       bounced = true;
       comboBreak();
     }
@@ -853,7 +900,7 @@
     collideBatBall(dt);
 
     // Speed cap so it never tunnels through walls.
-    const maxV = 4.5 * S.h;
+    const maxV = 4.5 * S.h * phys.speed;
     const sp = Math.hypot(ball.vx, ball.vy);
     if (sp > maxV) { ball.vx *= maxV / sp; ball.vy *= maxV / sp; }
 
@@ -964,7 +1011,8 @@
     if (vn >= 0) return; // already separating
 
     const rest = 0.92;
-    const j = -(1 + rest) * vn;
+    // launch: light balls rocket off the bat, heavy ones absorb the blow.
+    const j = -(1 + rest) * vn * ballPhys().launch;
     ball.vx += j * nx;
     ball.vy += j * ny;
 

@@ -60,7 +60,15 @@
   .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
 
   /* ---- hero ---- */
-  header.wrap { position: relative; padding: 76px 24px 44px; text-align: center; }
+  header.wrap { position: relative; padding: 76px 24px 44px; text-align: center; overflow: hidden; }
+  .hero-glow {
+    position: absolute; width: 380px; height: 380px; border-radius: 50%;
+    left: 50%; top: 40%; pointer-events: none; z-index: -1;
+    background: radial-gradient(circle, rgba(126, 242, 168, 0.16), rgba(110, 231, 255, 0.08) 45%, transparent 70%);
+    transform: translate(-50%, -50%); filter: blur(8px);
+    opacity: 0; transition: opacity 0.4s ease;
+  }
+  header.wrap:hover .hero-glow { opacity: 1; }
   .badge {
     display: inline-block; border: 1px solid var(--line); border-radius: 999px;
     padding: 7px 16px; font-size: 13px; color: var(--dim); margin-bottom: 26px;
@@ -326,6 +334,7 @@
 </div>
 
 <header class="wrap">
+  <div class="hero-glow" id="hero-glow"></div>
   <span class="doodad" style="top:12%; left:6%;">⚾</span>
   <span class="doodad" style="top:24%; right:8%; animation-delay:-2s;">🏏</span>
   <span class="doodad" style="top:64%; left:12%; animation-delay:-4s;">✨</span>
@@ -497,6 +506,40 @@
       gateEl.classList.add('show');
     }
   }, 400);
+
+  // Hero: cursor-following glow + doodad parallax (skipped for reduced-motion).
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const headerEl = document.querySelector('header.wrap');
+    const glowEl = document.getElementById('hero-glow');
+    const doodads = [...headerEl.querySelectorAll('.doodad')];
+    let tx = 0, ty = 0, gx = 0, gy = 0, animating = false;
+    headerEl.addEventListener('mousemove', (e) => {
+      const r = headerEl.getBoundingClientRect();
+      tx = e.clientX - r.left;
+      ty = e.clientY - r.top;
+      if (!animating) { animating = true; requestAnimationFrame(heroTick); }
+    });
+    function heroTick() {
+      gx += (tx - gx) * 0.1;
+      gy += (ty - gy) * 0.1;
+      glowEl.style.left = gx + 'px';
+      glowEl.style.top = gy + 'px';
+      const r = headerEl.getBoundingClientRect();
+      const px = gx / r.width - 0.5, py = gy / r.height - 0.5;
+      doodads.forEach((d, i) => {
+        // Each doodad drifts opposite the cursor at its own depth — margins,
+        // not transforms, so the floaty animation keeps running underneath.
+        const depth = 18 + (i % 4) * 12;
+        d.style.marginLeft = (-px * depth) + 'px';
+        d.style.marginTop = (-py * depth) + 'px';
+      });
+      if (Math.abs(tx - gx) > 0.4 || Math.abs(ty - gy) > 0.4) {
+        requestAnimationFrame(heroTick);
+      } else {
+        animating = false;
+      }
+    }
+  }
 
   // Fake-podcast waveform: bars with randomized rhythm so it reads as "audio playing".
   const waveEl = document.querySelector('.fv-wave');
