@@ -232,15 +232,17 @@
     margin-top: 42px; display: flex; align-items: flex-end; gap: 6px; height: 200px;
     border-bottom: 1px solid var(--line); padding-bottom: 0;
   }
-  .rung { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 8px; }
+  /* height: 100% is load-bearing — without a definite rung height the bars'
+     percentage heights resolve to auto and the growth animation never shows. */
+  .rung { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 8px; }
   .rung .bar {
     width: 100%; border-radius: 6px 6px 0 0;
     background: linear-gradient(180deg, var(--green), rgba(126, 242, 168, 0.08));
-    background-size: 100% 220%;
+    background-size: 100% 300%;
     transition: height 1s cubic-bezier(0.34, 1.4, 0.4, 1); height: 4px;
-    animation: barflow 4s ease-in-out infinite alternate;
+    animation: barflow 3s ease-in-out infinite alternate;
   }
-  @keyframes barflow { from { background-position-y: 0%; } to { background-position-y: 55%; } }
+  @keyframes barflow { from { background-position-y: 0%; } to { background-position-y: 100%; } }
   .rung.gold .bar {
     background-image: linear-gradient(180deg, var(--gold), rgba(255, 210, 74, 0.1));
     animation: barflow 4s ease-in-out infinite alternate, goldglow 2.2s ease-in-out infinite;

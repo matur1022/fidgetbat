@@ -605,16 +605,9 @@
   }
 
   // ----- Per-bat sound identity ----------------------------------------------
-  // Six archetypes: hit = [oscType, baseFreq, freqSpan, dur, gain, harmonicRatio?]
-  //                 whoosh = [sweepLoHz, sweepHiHz, dur]
-  const SOUND_PROFILES = {
-    wood:   { hit: ['square', 180, 480, 0.08, 0.12], whoosh: [300, 900, 0.18] },
-    soft:   { hit: ['sine', 120, 260, 0.10, 0.16], whoosh: [180, 480, 0.22] },
-    metal:  { hit: ['triangle', 520, 700, 0.12, 0.10, 2.01], whoosh: [500, 1400, 0.16] },
-    energy: { hit: ['sawtooth', 240, 520, 0.14, 0.07, 1.5], whoosh: [700, 2000, 0.20] },
-    dark:   { hit: ['sawtooth', 80, 180, 0.18, 0.12, 0.5], whoosh: [110, 380, 0.26] },
-    royal:  { hit: ['triangle', 392, 330, 0.20, 0.10, 1.26], whoosh: [400, 1200, 0.22] },
-  };
+  // Six archetypes, each with hand-built synthesis so materials are
+  // unmistakable: wood cracks, soft thuds, metal clangs and rings,
+  // energy zaps, dark booms, royal chimes.
   const BAT_SOUND = {
     wood: 'wood', sandlot: 'wood', bamboo: 'wood', wildvine: 'wood',
     candycane: 'soft', poolnoodle: 'soft',
@@ -623,9 +616,90 @@
     obsidian: 'dark', shadowblade: 'dark', titanmaul: 'dark',
     goldenoak: 'royal', rookiecrown: 'royal', halloffame: 'royal', thelegend: 'royal',
   };
-  function batProfile() {
-    return SOUND_PROFILES[BAT_SOUND[S.sel.bat] || 'wood'];
+  function batArchetype() {
+    return BAT_SOUND[S.sel.bat] || 'wood';
   }
+
+  // Oscillator with attack/decay envelope and optional pitch glide.
+  function tone(freq, dur, gain, type, opts = {}) {
+    if (S.muted || !S.actx) return;
+    const c = S.actx;
+    const t0 = c.currentTime + (opts.delay || 0);
+    const o = c.createOscillator();
+    const g = c.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(Math.max(freq, 1), t0);
+    if (opts.pitchEnd) o.frequency.exponentialRampToValueAtTime(Math.max(opts.pitchEnd, 1), t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(gain, t0 + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g).connect(c.destination);
+    o.start(t0);
+    o.stop(t0 + dur + 0.02);
+  }
+
+  // Filtered noise burst — cracks, rumbles, air.
+  function noiseHit(dur, gain, freq, freqEnd, type, q) {
+    if (S.muted || !S.actx) return;
+    const c = S.actx;
+    const buf = c.createBuffer(1, Math.ceil(c.sampleRate * dur), c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const src = c.createBufferSource();
+    src.buffer = buf;
+    const f = c.createBiquadFilter();
+    f.type = type || 'bandpass';
+    f.Q.value = q || 1;
+    f.frequency.setValueAtTime(freq, c.currentTime);
+    if (freqEnd) f.frequency.exponentialRampToValueAtTime(freqEnd, c.currentTime + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(gain, c.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
+    src.connect(f).connect(g).connect(c.destination);
+    src.start();
+  }
+
+  // i = impact strength 0..1, lift = combo pitch lift (juggles climb in pitch).
+  const HIT_SYNTHS = {
+    wood(i, lift) { // sharp crack + woody thock
+      noiseHit(0.05, 0.22, 1400, 500, 'bandpass', 0.8);
+      const f = (170 + 220 * i) * lift;
+      tone(f, 0.09, 0.16, 'square', { pitchEnd: f * 0.6 });
+    },
+    soft(i, lift) { // rubbery boing-thud
+      tone((150 + 60 * i) * lift, 0.22, 0.26, 'sine', { pitchEnd: 60 });
+      noiseHit(0.08, 0.05, 300, 120, 'lowpass');
+    },
+    metal(i, lift) { // inharmonic clang that keeps ringing
+      const f0 = (420 + 260 * i) * lift;
+      tone(f0, 0.3, 0.13, 'triangle');
+      tone(f0 * 2.76, 0.22, 0.07, 'sine');
+      tone(f0 * 5.4, 0.12, 0.04, 'sine');
+      noiseHit(0.03, 0.1, 3000, 1500, 'highpass');
+    },
+    energy(i, lift) { // descending laser zap + sub punch
+      tone((900 + 500 * i) * lift, 0.16, 0.1, 'sawtooth', { pitchEnd: 180 });
+      tone(110, 0.1, 0.09, 'square', { pitchEnd: 70 });
+    },
+    dark(i, lift) { // deep cinematic boom
+      tone((95 + 30 * i) * lift, 0.34, 0.3, 'sine', { pitchEnd: 38 });
+      noiseHit(0.18, 0.1, 180, 60, 'lowpass');
+    },
+    royal(i, lift) { // ascending golden chime
+      tone(523 * lift, 0.26, 0.09, 'triangle');
+      tone(659 * lift, 0.26, 0.08, 'triangle', { delay: 0.035 });
+      tone((784 + 200 * i) * lift, 0.3, 0.07, 'triangle', { delay: 0.07 });
+    },
+  };
+
+  const WHOOSH_PROFILES = {
+    wood:   { lo: 300, hi: 900,  dur: 0.18, hum: false },
+    soft:   { lo: 150, hi: 420,  dur: 0.24, hum: false },
+    metal:  { lo: 600, hi: 1800, dur: 0.16, hum: false },
+    energy: { lo: 500, hi: 2200, dur: 0.22, hum: true }, // saber-style hum under the air
+    dark:   { lo: 90,  hi: 320,  dur: 0.30, hum: false },
+    royal:  { lo: 400, hi: 1300, dur: 0.22, hum: false },
+  };
 
   function blip(freq, dur, gain, type) {
     if (S.muted || !S.actx) return;
@@ -642,32 +716,17 @@
   }
 
   function hitSound(intensity) {
-    const p = batProfile().hit;
     const i = Math.min(intensity, 1);
-    blip(p[1] + p[2] * i, p[3], p[4], p[0]);
-    // Optional harmonic layer gives each material its character.
-    if (p[5]) blip((p[1] + p[2] * i) * p[5], p[3] * 0.8, p[4] * 0.45, p[0]);
+    // Juggling combos climb subtly in pitch — you can hear a streak building.
+    const lift = 1 + Math.min(S.combo, 12) * 0.03;
+    HIT_SYNTHS[batArchetype()](i, lift);
   }
 
   function whoosh() {
     if (S.muted || !S.actx) return;
-    const c = S.actx;
-    const [lo, hi, dur] = batProfile().whoosh;
-    const buf = c.createBuffer(1, c.sampleRate * dur, c.sampleRate);
-    const data = buf.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-    const src = c.createBufferSource();
-    src.buffer = buf;
-    const filt = c.createBiquadFilter();
-    filt.type = 'bandpass';
-    filt.Q.value = 1.2;
-    filt.frequency.setValueAtTime(lo, c.currentTime);
-    filt.frequency.exponentialRampToValueAtTime(hi, c.currentTime + dur);
-    const g = c.createGain();
-    g.gain.setValueAtTime(0.05, c.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
-    src.connect(filt).connect(g).connect(c.destination);
-    src.start();
+    const w = WHOOSH_PROFILES[batArchetype()];
+    noiseHit(w.dur, 0.05, w.lo, w.hi, 'bandpass', 1.2);
+    if (w.hum) tone(140, w.dur, 0.045, 'sawtooth', { pitchEnd: 240 });
   }
 
   function unlockSound() {
@@ -1170,17 +1229,18 @@
 
     if (trailStyle) {
       b.trail.push({ x: b.x, y: b.y });
-      if (b.trail.length > 12) b.trail.shift();
+      if (b.trail.length > 26) b.trail.shift();
       ctx.save();
       for (let i = 0; i < b.trail.length; i++) {
         const p = b.trail[i];
         const f = i / b.trail.length;
-        ctx.globalAlpha = f * 0.25 * GA();
-        const col = trailStyle.color === 'rainbow' ? `hsl(${(performance.now() / 8 + i * 24) % 360},95%,65%)` : trailStyle.color;
+        ctx.globalAlpha = f * 0.38 * GA();
+        const col = trailStyle.color === 'rainbow' ? `hsl(${(performance.now() / 8 + i * 14) % 360},95%,65%)` : trailStyle.color;
         ctx.fillStyle = col;
-        if (trailStyle.sparkle) { ctx.shadowColor = col; ctx.shadowBlur = 8; }
+        if (trailStyle.sparkle) { ctx.shadowColor = col; ctx.shadowBlur = 10; }
         ctx.beginPath();
-        ctx.arc(p.x, p.y, b.r * f * (trailStyle.sparkle ? 0.7 : 1), 0, Math.PI * 2);
+        // Taper from a visible stub at the tail to near ball-size at the head.
+        ctx.arc(p.x, p.y, b.r * (0.2 + 0.75 * f) * (trailStyle.sparkle ? 0.8 : 1), 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.restore();
