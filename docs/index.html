@@ -147,12 +147,45 @@
       radial-gradient(ellipse at 75% 70%, #1b2b33 0%, transparent 55%),
       #101018;
   }
-  .fake-video {
-    position: absolute; inset: 0; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 10px; color: rgba(255,255,255,0.22);
+  /* fake "video" scene — a living podcast set so the demo feels like a real watch */
+  .fake-video { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+  .fv-glow {
+    position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.5;
+    animation: fvdrift 14s ease-in-out infinite alternate;
   }
-  .fake-video .fv-title { font-size: clamp(15px, 3vw, 24px); font-weight: 700; }
-  .fake-video .fv-sub { font-size: 13px; }
+  .fv-glow.g1 { width: 300px; height: 300px; background: #23355c; top: -60px; left: 8%; }
+  .fv-glow.g2 { width: 260px; height: 260px; background: #3a2354; bottom: -80px; right: 10%; animation-delay: -7s; }
+  @keyframes fvdrift { from { transform: translate(0, 0); } to { transform: translate(40px, 24px); } }
+  .fv-topline { position: absolute; top: 12px; left: 14px; display: flex; gap: 10px; align-items: center; }
+  .fv-live {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.08em; color: #ff5c5c; background: rgba(0, 0, 0, 0.45); padding: 4px 10px; border-radius: 999px;
+  }
+  .fv-live i { width: 7px; height: 7px; border-radius: 50%; background: #ff5c5c; animation: fvblink 1.4s ease-in-out infinite; }
+  @keyframes fvblink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+  .fv-title { font-size: 12px; color: rgba(255, 255, 255, 0.35); }
+  .fv-caption {
+    position: absolute; top: 17%; left: 10%; right: 10%; text-align: center;
+    font-size: clamp(12px, 2vw, 15px); font-style: italic; color: rgba(255, 255, 255, 0.35);
+    transition: opacity 0.35s ease;
+  }
+  .fv-host { position: absolute; bottom: 24%; width: 90px; }
+  .fv-host.h1 { left: 22%; animation: fvbob 3.4s ease-in-out infinite; }
+  .fv-host.h2 { right: 22%; animation: fvbob 4.1s ease-in-out infinite; animation-delay: -1.6s; }
+  @keyframes fvbob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+  .fv-head { display: block; width: 42px; height: 42px; border-radius: 50%; background: #2e3346; margin: 0 auto 5px; }
+  .fv-body { display: block; width: 82px; height: 50px; border-radius: 26px 26px 0 0; background: #262b3c; margin: 0 auto; }
+  .fv-mic {
+    position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%);
+    width: 7px; height: 30px; border-radius: 4px; background: #1a1e2c;
+  }
+  .fv-desk { position: absolute; bottom: 20%; left: 13%; right: 13%; height: 10px; border-radius: 6px; background: #1c2030; }
+  .fv-wave {
+    position: absolute; bottom: 8%; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 3px; align-items: flex-end; height: 26px;
+  }
+  .fv-wave i { width: 3px; background: rgba(255, 255, 255, 0.3); border-radius: 2px; animation: fvwave 0.9s ease-in-out infinite alternate; }
+  @keyframes fvwave { from { height: 4px; } to { height: 24px; } }
   .yt-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 36px; background: linear-gradient(transparent, rgba(0,0,0,0.6)); }
   .yt-progress { position: absolute; left: 12px; right: 12px; bottom: 26px; height: 3px; background: rgba(255,255,255,0.25); border-radius: 2px; }
   .yt-progress i { display: block; height: 100%; width: 38%; background: #ff0033; border-radius: 2px; animation: watch 90s linear infinite; }
@@ -203,9 +236,19 @@
   .rung .bar {
     width: 100%; border-radius: 6px 6px 0 0;
     background: linear-gradient(180deg, var(--green), rgba(126, 242, 168, 0.08));
-    transition: height 1s cubic-bezier(0.2, 0.8, 0.2, 1); height: 4px;
+    background-size: 100% 220%;
+    transition: height 1s cubic-bezier(0.34, 1.4, 0.4, 1); height: 4px;
+    animation: barflow 4s ease-in-out infinite alternate;
   }
-  .rung.gold .bar { background: linear-gradient(180deg, var(--gold), rgba(255, 210, 74, 0.1)); }
+  @keyframes barflow { from { background-position-y: 0%; } to { background-position-y: 55%; } }
+  .rung.gold .bar {
+    background-image: linear-gradient(180deg, var(--gold), rgba(255, 210, 74, 0.1));
+    animation: barflow 4s ease-in-out infinite alternate, goldglow 2.2s ease-in-out infinite;
+  }
+  @keyframes goldglow {
+    0%, 100% { box-shadow: 0 0 6px rgba(255, 210, 74, 0.25); }
+    50% { box-shadow: 0 0 22px rgba(255, 210, 74, 0.65); }
+  }
   .rung .num { font-size: 11px; color: var(--dim); white-space: nowrap; transform: rotate(-30deg); transform-origin: center; }
   .ladder-cap { display: flex; justify-content: space-between; margin-top: 30px; color: var(--dim); font-size: 14px; }
   .ladder-cap b { color: var(--gold); }
@@ -237,7 +280,8 @@
   footer .brand { font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 18px; color: var(--ink); margin-bottom: 10px; }
 
   @media (prefers-reduced-motion: reduce) {
-    .blob, .doodad, .wiggle, .marquee-inner, .yt-progress i { animation: none !important; }
+    .blob, .doodad, .wiggle, .marquee-inner, .yt-progress i,
+    .fv-glow, .fv-host, .fv-wave i, .fv-live i, .rung .bar { animation: none !important; }
     .rev { opacity: 1; transform: none; transition: none; }
   }
 </style>
@@ -257,7 +301,7 @@
   <span class="doodad" style="top:70%; right:14%; animation-delay:-5.5s;">⭐</span>
 
   <div class="badge">🧠 Built for restless hands · <b>free Chrome extension</b></div>
-  <h1>Can't sit still?<br /><span class="zap">Don't.</span> <span class="wiggle">⚾</span></h1>
+  <h1>Can't sit still? Don't.<br /><span class="zap">Fidget while you watch.</span> <span class="wiggle">⚾</span></h1>
   <p class="sub">
     FidgetBat floats a <b>physics bat-and-ball toy over your YouTube videos</b>.
     Grab the bat, swing it with your mouse, smack the ball around the screen —
@@ -286,9 +330,18 @@
       <span class="yt-url">youtube.com/watch?v=that-3-hour-podcast-you-swore-you-would-finish</span>
     </div>
     <div id="movie_player">
-      <div class="fake-video">
-        <div class="fv-title">▶ Pretend 3-hour podcast</div>
-        <div class="fv-sub">(imagine two guys with microphones)</div>
+      <div class="fake-video" aria-hidden="true">
+        <div class="fv-glow g1"></div>
+        <div class="fv-glow g2"></div>
+        <div class="fv-topline">
+          <span class="fv-live"><i></i> LIVE</span>
+          <span class="fv-title">Pretend 3-Hour Podcast — Ep. 412</span>
+        </div>
+        <div class="fv-caption">“…and that's when I realized the bird was never real…”</div>
+        <div class="fv-host h1"><i class="fv-head"></i><i class="fv-body"></i><i class="fv-mic"></i></div>
+        <div class="fv-host h2"><i class="fv-head"></i><i class="fv-body"></i><i class="fv-mic"></i></div>
+        <div class="fv-desk"></div>
+        <div class="fv-wave"></div>
       </div>
       <div class="yt-bar"></div>
       <div class="yt-progress"><i></i></div>
@@ -345,7 +398,7 @@
 
 <section class="wrap rev">
   <p class="kicker">The long game</p>
-  <h2>68 unlockables. Four difficulties.<br />A grind measured in <span style="color:var(--gold)">years</span>.</h2>
+  <h2><span id="count-unlocks">68</span> unlockables. Four difficulties.<br />A grind measured in <span style="color:var(--gold)">years</span>.</h2>
   <p class="lead">Every difficulty has its own 17-step reward ladder — bats, balls, trails and hit effects — from <b>5 hits</b> to <b>1,000,000</b>. The first unlock lands in your first minute. The last one is a lifestyle.</p>
   <div class="ladder" id="ladder" aria-hidden="true"></div>
   <div class="ladder-cap"><span>5 hits — Tennis Ball 🎾</span><span><b>1,000,000 hits — THE LEGEND 🐐</b></span></div>
@@ -412,6 +465,48 @@
       gateEl.classList.add('show');
     }
   }, 400);
+
+  // Fake-podcast waveform: bars with randomized rhythm so it reads as "audio playing".
+  const waveEl = document.querySelector('.fv-wave');
+  for (let i = 0; i < 26; i++) {
+    const b = document.createElement('i');
+    b.style.animationDuration = (0.5 + Math.random() * 0.9).toFixed(2) + 's';
+    b.style.animationDelay = (-Math.random() * 1.5).toFixed(2) + 's';
+    waveEl.appendChild(b);
+  }
+
+  // Cycling captions — the "someone is talking" effect.
+  const CAPTIONS = [
+    '“…and that\'s when I realized the bird was never real…”',
+    '“okay but hear me out: medieval guys would\'ve loved escalators”',
+    '“we\'ll get to the actual topic right after this tangent”',
+    '“so anyway, that\'s the entire history of salt”',
+    '“wait — are we still recording?”',
+    '“my guy unlocked the lightsaber bat and called in sick”',
+  ];
+  const capEl = document.querySelector('.fv-caption');
+  let capI = 0;
+  setInterval(() => {
+    capI = (capI + 1) % CAPTIONS.length;
+    capEl.style.opacity = 0;
+    setTimeout(() => { capEl.textContent = CAPTIONS[capI]; capEl.style.opacity = 1; }, 350);
+  }, 3800);
+
+  // Count-up on "68 unlockables" when it scrolls into view.
+  const countEl = document.getElementById('count-unlocks');
+  const countIO = new IntersectionObserver((entries) => {
+    if (!entries[0].isIntersecting) return;
+    countIO.disconnect();
+    let cur = 0;
+    const tick = () => {
+      cur += 2;
+      if (cur >= 68) { countEl.textContent = '68'; return; }
+      countEl.textContent = cur;
+      requestAnimationFrame(tick);
+    };
+    tick();
+  }, { threshold: 0.4 });
+  countIO.observe(countEl);
 
   // Scroll-reveal.
   const io = new IntersectionObserver((entries) => {
