@@ -609,16 +609,45 @@
   // Six archetypes, each with hand-built synthesis so materials are
   // unmistakable: wood cracks, soft thuds, metal clangs and rings,
   // energy zaps, dark booms, royal chimes.
-  const BAT_SOUND = {
-    wood: 'wood', sandlot: 'wood', bamboo: 'wood', wildvine: 'wood',
-    candycane: 'soft', poolnoodle: 'soft',
-    metal: 'metal', carbon: 'metal', diamond: 'metal', icebat: 'metal', excalibat: 'metal', stormbreaker: 'metal',
-    neon: 'energy', saber: 'energy', inferno: 'energy', thunderbat: 'energy', cosmic: 'energy', omegabat: 'energy',
-    obsidian: 'dark', shadowblade: 'dark', titanmaul: 'dark',
-    goldenoak: 'royal', rookiecrown: 'royal', halloffame: 'royal', thelegend: 'royal',
+  // Every bat has its own voice: `arch` picks the material engine,
+  // `pitch`/`dur` shift its register and ring length, and signature flags
+  // add a per-bat layer (sparkle ping, sub thump, fire crackle, …).
+  // No two bats share the same tuple — each is audibly its own thing.
+  const BAT_VOICES = {
+    // wood — crack + thock
+    wood:         { arch: 'wood',   pitch: 1.0,  dur: 1.0 },
+    sandlot:      { arch: 'wood',   pitch: 0.85, dur: 1.15 },                 // older, duller plank
+    bamboo:       { arch: 'wood',   pitch: 1.35, dur: 0.8,  hollow: true },   // hollow knock
+    wildvine:     { arch: 'wood',   pitch: 0.7,  dur: 1.3,  rustle: true },   // leafy swish in the hit
+    // soft — rubbery thud
+    poolnoodle:   { arch: 'soft',   pitch: 0.8,  dur: 1.3 },                  // deep floppy womp
+    candycane:    { arch: 'soft',   pitch: 1.5,  dur: 0.7,  sparkle: true },  // sugary squeak + ping
+    // metal — inharmonic clang
+    metal:        { arch: 'metal',  pitch: 1.0,  dur: 1.0 },
+    carbon:       { arch: 'metal',  pitch: 0.85, dur: 0.6 },                  // damped, thunky composite
+    diamond:      { arch: 'metal',  pitch: 1.6,  dur: 1.2,  sparkle: true },  // crystal ring
+    icebat:       { arch: 'metal',  pitch: 1.35, dur: 0.7,  ice: true },      // glassy shimmer
+    excalibat:    { arch: 'metal',  pitch: 1.1,  dur: 1.6,  sparkle: true },  // long heroic ring
+    stormbreaker: { arch: 'metal',  pitch: 0.7,  dur: 1.1,  sub: true },      // heavy hammer blow
+    // energy — laser zap
+    neon:         { arch: 'energy', pitch: 1.3,  dur: 0.8 },                  // zippy arcade zap
+    saber:        { arch: 'energy', pitch: 0.9,  dur: 1.3,  sub: true },      // weighty plasma clash
+    inferno:      { arch: 'energy', pitch: 0.75, dur: 1.1,  crackle: true },  // fire roar
+    thunderbat:   { arch: 'energy', pitch: 1.1,  dur: 0.9,  snap: true },     // thunder crack
+    cosmic:       { arch: 'energy', pitch: 1.45, dur: 1.3,  sparkle: true },  // spacey shimmer
+    omegabat:     { arch: 'energy', pitch: 0.6,  dur: 1.2,  sub: true },      // ominous low zap
+    // dark — cinematic boom
+    obsidian:     { arch: 'dark',   pitch: 1.0,  dur: 1.0 },
+    shadowblade:  { arch: 'dark',   pitch: 1.4,  dur: 0.6,  snap: true },     // quick dark slice
+    titanmaul:    { arch: 'dark',   pitch: 0.65, dur: 1.4,  sub: true },      // seismic slam
+    // royal — golden chime
+    goldenoak:    { arch: 'royal',  pitch: 0.8,  dur: 0.9 },                  // warm low chime
+    rookiecrown:  { arch: 'royal',  pitch: 1.2,  dur: 0.8 },                  // bright young chime
+    halloffame:   { arch: 'royal',  pitch: 1.0,  dur: 1.3,  sparkle: true },  // ceremonial ring
+    thelegend:    { arch: 'royal',  pitch: 1.0,  dur: 1.6,  sparkle: true, sub: true }, // full fanfare + boom
   };
-  function batArchetype() {
-    return BAT_SOUND[S.sel.bat] || 'wood';
+  function batVoice() {
+    return BAT_VOICES[S.sel.bat] || BAT_VOICES.wood;
   }
 
   // Oscillator with attack/decay envelope and optional pitch glide.
@@ -660,36 +689,37 @@
     src.start();
   }
 
-  // i = impact strength 0..1, lift = combo pitch lift (juggles climb in pitch).
+  // i = impact strength 0..1, lift = combo pitch lift (juggles climb in pitch),
+  // P/D = the bat's own register and ring-length from its voice.
   const HIT_SYNTHS = {
-    wood(i, lift) { // sharp crack + woody thock
-      noiseHit(0.05, 0.22, 1400, 500, 'bandpass', 0.8);
-      const f = (170 + 220 * i) * lift;
-      tone(f, 0.09, 0.16, 'square', { pitchEnd: f * 0.6 });
+    wood(i, lift, P, D) { // sharp crack + woody thock
+      noiseHit(0.05 * D, 0.22, 1400 * P, 500 * P, 'bandpass', 0.8);
+      const f = (170 + 220 * i) * lift * P;
+      tone(f, 0.09 * D, 0.16, 'square', { pitchEnd: f * 0.6 });
     },
-    soft(i, lift) { // rubbery boing-thud
-      tone((150 + 60 * i) * lift, 0.22, 0.26, 'sine', { pitchEnd: 60 });
-      noiseHit(0.08, 0.05, 300, 120, 'lowpass');
+    soft(i, lift, P, D) { // rubbery boing-thud
+      tone((150 + 60 * i) * lift * P, 0.22 * D, 0.26, 'sine', { pitchEnd: 60 * P });
+      noiseHit(0.08 * D, 0.05, 300 * P, 120 * P, 'lowpass');
     },
-    metal(i, lift) { // inharmonic clang that keeps ringing
-      const f0 = (420 + 260 * i) * lift;
-      tone(f0, 0.3, 0.13, 'triangle');
-      tone(f0 * 2.76, 0.22, 0.07, 'sine');
-      tone(f0 * 5.4, 0.12, 0.04, 'sine');
+    metal(i, lift, P, D) { // inharmonic clang that keeps ringing
+      const f0 = (420 + 260 * i) * lift * P;
+      tone(f0, 0.3 * D, 0.13, 'triangle');
+      tone(f0 * 2.76, 0.22 * D, 0.07, 'sine');
+      tone(f0 * 5.4, 0.12 * D, 0.04, 'sine');
       noiseHit(0.03, 0.1, 3000, 1500, 'highpass');
     },
-    energy(i, lift) { // descending laser zap + sub punch
-      tone((900 + 500 * i) * lift, 0.16, 0.1, 'sawtooth', { pitchEnd: 180 });
-      tone(110, 0.1, 0.09, 'square', { pitchEnd: 70 });
+    energy(i, lift, P, D) { // descending laser zap + sub punch
+      tone((900 + 500 * i) * lift * P, 0.16 * D, 0.1, 'sawtooth', { pitchEnd: 180 * P });
+      tone(110 * P, 0.1 * D, 0.09, 'square', { pitchEnd: 70 * P });
     },
-    dark(i, lift) { // deep cinematic boom
-      tone((95 + 30 * i) * lift, 0.34, 0.3, 'sine', { pitchEnd: 38 });
-      noiseHit(0.18, 0.1, 180, 60, 'lowpass');
+    dark(i, lift, P, D) { // deep cinematic boom
+      tone((95 + 30 * i) * lift * P, 0.34 * D, 0.3, 'sine', { pitchEnd: 38 * P });
+      noiseHit(0.18 * D, 0.1, 180 * P, 60 * P, 'lowpass');
     },
-    royal(i, lift) { // ascending golden chime
-      tone(523 * lift, 0.26, 0.09, 'triangle');
-      tone(659 * lift, 0.26, 0.08, 'triangle', { delay: 0.035 });
-      tone((784 + 200 * i) * lift, 0.3, 0.07, 'triangle', { delay: 0.07 });
+    royal(i, lift, P, D) { // ascending golden chime
+      tone(523 * lift * P, 0.26 * D, 0.09, 'triangle');
+      tone(659 * lift * P, 0.26 * D, 0.08, 'triangle', { delay: 0.035 });
+      tone((784 + 200 * i) * lift * P, 0.3 * D, 0.07, 'triangle', { delay: 0.07 });
     },
   };
 
@@ -720,14 +750,26 @@
     const i = Math.min(intensity, 1);
     // Juggling combos climb subtly in pitch — you can hear a streak building.
     const lift = 1 + Math.min(S.combo, 12) * 0.03;
-    HIT_SYNTHS[batArchetype()](i, lift);
+    const v = batVoice();
+    HIT_SYNTHS[v.arch](i, lift, v.pitch, v.dur);
+    // Signature layers — the per-bat fingerprint on top of the material.
+    if (v.sparkle) tone(1568 * v.pitch * lift, 0.2, 0.045, 'sine', { delay: 0.04 });
+    if (v.sub) tone(62, 0.22, 0.12, 'sine', { pitchEnd: 40 });
+    if (v.crackle) noiseHit(0.14, 0.07, 900, 300, 'bandpass', 2);
+    if (v.snap) noiseHit(0.03, 0.14, 4000, 2200, 'highpass');
+    if (v.hollow) tone(620 * v.pitch, 0.07, 0.07, 'square', { pitchEnd: 300 });
+    if (v.rustle) noiseHit(0.16, 0.05, 600, 250, 'bandpass', 0.7);
+    if (v.ice) noiseHit(0.22, 0.04, 5200, 2600, 'bandpass', 3);
   }
 
   function whoosh() {
     if (S.muted || !S.actx) return;
-    const w = WHOOSH_PROFILES[batArchetype()];
-    noiseHit(w.dur, 0.05, w.lo, w.hi, 'bandpass', 1.2);
-    if (w.hum) tone(140, w.dur, 0.045, 'sawtooth', { pitchEnd: 240 });
+    const v = batVoice();
+    const w = WHOOSH_PROFILES[v.arch];
+    // Each bat's swing sweeps in its own register too.
+    const p = Math.sqrt(v.pitch);
+    noiseHit(w.dur, 0.05, w.lo * p, w.hi * p, 'bandpass', 1.2);
+    if (w.hum) tone(140 * v.pitch, w.dur, 0.045, 'sawtooth', { pitchEnd: 240 * v.pitch });
   }
 
   function unlockSound() {

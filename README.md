@@ -16,7 +16,7 @@ A physics bat-and-ball fidget toy that overlays the YouTube player. Grab the bot
 - Gold **stars** spawn occasionally — knock the ball into one for +5 bonus hits.
 - The HUD (top right) shows a **next-reward chip** (what's coming, hits remaining, progress bar — it bumps on every scoring hit) and the **hit counter pill** with your difficulty badge; click either to open the rewards panel.
 - **👻 Ghost mode** renders the whole game ~75% transparent with crisp white outlines, so the video stays fully watchable while you fidget. **🔊/🔇** mutes all game sounds. Both persist.
-- Every bat has its own sound identity — six audio archetypes (wood thock, soft thud, metal ping, energy buzz, dark boom, royal chime) drive both the swing whoosh and the hit sound, so a Pool Noodle thuds and Excalibat rings.
+- Every one of the 25 bats has its own unique voice. Six material engines (wood crack, soft thud, metal clang, energy zap, dark boom, royal chime) provide the base, and each bat layers its own register, ring length, and signature sound on top — Diamond rings with crystal sparkle, Stormbreaker lands with a sub-bass thump, Inferno crackles like fire, Bamboo knocks hollow. Swing whooshes are pitched per-bat too.
 - ✕ closes the overlay.
 - Clicks elsewhere on the video pass through to YouTube as normal (play/pause still works).
 
