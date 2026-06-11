@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FidgetBat — fidget while you watch YouTube</title>
+<meta name="description" content="A physics bat-and-ball fidget toy that floats over your YouTube videos. Built for restless hands. Swing, hit, unlock — while you watch." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Outfit:wght@800;900&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/overlay.css" />
+<style>
+  :root {
+    --bg: #0a0a12;
+    --bg2: #11111d;
+    --ink: #f2f3f7;
+    --dim: #9aa0b4;
+    --green: #7ef2a8;
+    --cyan: #6ee7ff;
+    --gold: #ffd24a;
+    --red: #ff5c5c;
+    --purple: #9d6bff;
+    --card: rgba(255, 255, 255, 0.05);
+    --line: rgba(255, 255, 255, 0.1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Space Grotesk', -apple-system, sans-serif;
+    overflow-x: hidden;
+  }
+  h1, h2, h3, .display { font-family: 'Outfit', 'Space Grotesk', sans-serif; }
+
+  /* ---- animated background blobs ---- */
+  .blobs { position: fixed; inset: 0; z-index: -2; overflow: hidden; }
+  .blob {
+    position: absolute; border-radius: 50%; filter: blur(110px); opacity: 0.35;
+    animation: drift 26s ease-in-out infinite alternate;
+  }
+  .blob.b1 { width: 560px; height: 560px; background: #1d4a35; top: -160px; left: -120px; }
+  .blob.b2 { width: 480px; height: 480px; background: #1d2b5e; top: 30%; right: -180px; animation-delay: -8s; }
+  .blob.b3 { width: 520px; height: 520px; background: #3d1d52; bottom: -200px; left: 25%; animation-delay: -16s; }
+  @keyframes drift {
+    from { transform: translate(0, 0) scale(1); }
+    to { transform: translate(70px, -50px) scale(1.15); }
+  }
+
+  /* ---- floating doodads ---- */
+  .doodad {
+    position: absolute; font-size: 26px; opacity: 0.18; pointer-events: none; z-index: -1;
+    animation: floaty 7s ease-in-out infinite alternate;
+  }
+  @keyframes floaty {
+    from { transform: translateY(0) rotate(-12deg); }
+    to { transform: translateY(-26px) rotate(14deg); }
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---- hero ---- */
+  header.wrap { position: relative; padding: 96px 24px 56px; text-align: center; }
+  .badge {
+    display: inline-block; border: 1px solid var(--line); border-radius: 999px;
+    padding: 7px 16px; font-size: 13px; color: var(--dim); margin-bottom: 26px;
+    background: var(--card); backdrop-filter: blur(6px);
+  }
+  .badge b { color: var(--green); }
+  h1 {
+    font-size: clamp(44px, 8vw, 88px); font-weight: 900; line-height: 1.02;
+    letter-spacing: -0.02em;
+  }
+  h1 .zap {
+    background: linear-gradient(100deg, var(--green), var(--cyan), var(--gold));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  h1 .wiggle { display: inline-block; animation: wiggle 1.6s ease-in-out infinite; }
+  @keyframes wiggle {
+    0%, 100% { transform: rotate(-4deg); }
+    50% { transform: rotate(5deg) translateY(-3px); }
+  }
+  .sub {
+    margin: 24px auto 0; max-width: 640px; font-size: clamp(16px, 2.4vw, 20px);
+    color: var(--dim); line-height: 1.55;
+  }
+  .sub b { color: var(--ink); }
+  .cta-row { margin-top: 36px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; align-items: center; }
+  .cta {
+    display: inline-block; text-decoration: none; color: #0a0a12; font-weight: 700;
+    font-size: 18px; padding: 17px 34px; border-radius: 16px;
+    background: linear-gradient(100deg, var(--green), var(--cyan));
+    box-shadow: 0 10px 40px rgba(126, 242, 168, 0.25);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .cta:hover { transform: scale(1.05) rotate(-1deg); box-shadow: 0 14px 50px rgba(126, 242, 168, 0.4); }
+  .cta:active { transform: scale(0.97); }
+  .cta-note { font-size: 13px; color: var(--dim); }
+  .cta-ghost {
+    text-decoration: none; color: var(--ink); font-weight: 500; font-size: 15px;
+    padding: 16px 24px; border-radius: 16px; border: 1px solid var(--line); background: var(--card);
+    transition: background 0.15s ease;
+  }
+  .cta-ghost:hover { background: rgba(255,255,255,0.1); }
+
+  /* ---- marquee ---- */
+  .marquee {
+    border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    overflow: hidden; white-space: nowrap; padding: 13px 0; margin: 60px 0 0;
+    background: rgba(255,255,255,0.02);
+  }
+  .marquee-inner { display: inline-block; animation: scroll 22s linear infinite; }
+  .marquee span { font-size: 14px; letter-spacing: 0.22em; color: var(--dim); margin-right: 8px; }
+  .marquee b { color: var(--green); }
+  @keyframes scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+  /* ---- sections ---- */
+  section.wrap { padding: 110px 24px 88px; position: relative; }
+  .kicker {
+    font-size: 13px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--green);
+    margin-bottom: 18px; font-weight: 500;
+  }
+  h2 { font-size: clamp(30px, 5vw, 46px); font-weight: 900; letter-spacing: -0.01em; line-height: 1.08; }
+  .lead { color: var(--dim); margin-top: 16px; max-width: 620px; font-size: 17px; line-height: 1.6; }
+  .lead b, .lead a { color: var(--ink); }
+
+  /* reveal on scroll */
+  .rev { opacity: 0; transform: translateY(26px); transition: opacity 0.6s ease, transform 0.6s ease; }
+  .rev.vis { opacity: 1; transform: none; }
+
+  /* ---- demo ---- */
+  .demo-shell {
+    margin-top: 40px; border-radius: 20px; border: 1px solid var(--line);
+    background: var(--bg2); padding: 14px; box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+  }
+  .yt-chrome { display: flex; gap: 6px; padding: 0 4px 12px; align-items: center; }
+  .yt-dot { width: 11px; height: 11px; border-radius: 50%; background: rgba(255,255,255,0.12); }
+  .yt-dot.red { background: #ff5c5c; }
+  .yt-url {
+    flex: 1; margin-left: 10px; background: rgba(255,255,255,0.06); border-radius: 8px;
+    font-size: 12px; color: var(--dim); padding: 6px 12px; text-align: left;
+  }
+  #movie_player {
+    position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden;
+    background:
+      radial-gradient(ellipse at 30% 35%, #232338 0%, transparent 60%),
+      radial-gradient(ellipse at 75% 70%, #1b2b33 0%, transparent 55%),
+      #101018;
+  }
+  .fake-video {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 10px; color: rgba(255,255,255,0.22);
+  }
+  .fake-video .fv-title { font-size: clamp(15px, 3vw, 24px); font-weight: 700; }
+  .fake-video .fv-sub { font-size: 13px; }
+  .yt-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 36px; background: linear-gradient(transparent, rgba(0,0,0,0.6)); }
+  .yt-progress { position: absolute; left: 12px; right: 12px; bottom: 26px; height: 3px; background: rgba(255,255,255,0.25); border-radius: 2px; }
+  .yt-progress i { display: block; height: 100%; width: 38%; background: #ff0033; border-radius: 2px; animation: watch 90s linear infinite; }
+  @keyframes watch { from { width: 12%; } to { width: 96%; } }
+  .demo-hint { text-align: center; color: var(--dim); font-size: 14px; padding: 14px 4px 4px; }
+  .demo-hint b { color: var(--gold); }
+  .demo-gate {
+    position: absolute; inset: 0; z-index: 10001; display: none;
+    align-items: center; justify-content: center; text-align: center;
+    background: rgba(8, 8, 14, 0.82); backdrop-filter: blur(8px);
+  }
+  .demo-gate.show { display: flex; animation: gate-in 0.35s ease; }
+  @keyframes gate-in { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: none; } }
+  .dg-inner { max-width: 420px; padding: 24px; }
+  .dg-emoji { font-size: 38px; margin-bottom: 12px; }
+  .dg-inner h3 { font-size: 28px; margin-bottom: 10px; }
+  .dg-inner p { color: var(--dim); font-size: 15px; line-height: 1.55; margin-bottom: 22px; }
+
+  /* ---- science cards ---- */
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 18px; margin-top: 42px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 18px;
+    padding: 28px 26px; backdrop-filter: blur(6px);
+    transition: transform 0.2s ease, border-color 0.2s ease;
+  }
+  .card:hover { transform: translateY(-5px); border-color: rgba(126, 242, 168, 0.35); }
+  .card .ic { font-size: 30px; margin-bottom: 14px; display: inline-block; }
+  .card h3 { font-size: 19px; margin-bottom: 10px; }
+  .card p { color: var(--dim); font-size: 15px; line-height: 1.6; }
+  .card p a { color: var(--cyan); text-decoration: none; }
+  .card p a:hover { text-decoration: underline; }
+  .fineprint { margin-top: 26px; font-size: 13px; color: var(--dim); opacity: 0.75; max-width: 640px; }
+
+  /* ---- features ---- */
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; margin-top: 42px; }
+  .feat { display: flex; gap: 18px; align-items: flex-start; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 24px; }
+  .feat .ic { font-size: 26px; line-height: 1; }
+  .feat h3 { font-size: 17px; margin-bottom: 6px; }
+  .feat p { color: var(--dim); font-size: 14.5px; line-height: 1.55; }
+  .feat p b { color: var(--ink); }
+
+  /* ---- grind ladder ---- */
+  .ladder {
+    margin-top: 42px; display: flex; align-items: flex-end; gap: 6px; height: 200px;
+    border-bottom: 1px solid var(--line); padding-bottom: 0;
+  }
+  .rung { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 8px; }
+  .rung .bar {
+    width: 100%; border-radius: 6px 6px 0 0;
+    background: linear-gradient(180deg, var(--green), rgba(126, 242, 168, 0.08));
+    transition: height 1s cubic-bezier(0.2, 0.8, 0.2, 1); height: 4px;
+  }
+  .rung.gold .bar { background: linear-gradient(180deg, var(--gold), rgba(255, 210, 74, 0.1)); }
+  .rung .num { font-size: 11px; color: var(--dim); white-space: nowrap; transform: rotate(-30deg); transform-origin: center; }
+  .ladder-cap { display: flex; justify-content: space-between; margin-top: 30px; color: var(--dim); font-size: 14px; }
+  .ladder-cap b { color: var(--gold); }
+
+  .diffs { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-top: 34px; }
+  .diff { border: 1px solid var(--line); border-radius: 14px; padding: 18px; background: var(--card); }
+  .diff h4 { font-size: 16px; margin-bottom: 6px; }
+  .diff p { font-size: 13px; color: var(--dim); line-height: 1.5; }
+
+  /* ---- install ---- */
+  .steps { margin-top: 42px; display: grid; gap: 14px; counter-reset: step; }
+  .step {
+    display: flex; gap: 20px; align-items: center; background: var(--card);
+    border: 1px solid var(--line); border-radius: 16px; padding: 20px 24px;
+  }
+  .step .n {
+    flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+    background: linear-gradient(120deg, var(--green), var(--cyan)); color: #0a0a12; font-weight: 800; font-size: 17px;
+  }
+  .step p { color: var(--dim); font-size: 15px; line-height: 1.5; }
+  .step p b, .step code { color: var(--ink); }
+  .step code { background: rgba(255,255,255,0.08); border-radius: 6px; padding: 2px 8px; font-size: 13.5px; }
+  .webstore-note { margin-top: 18px; font-size: 13.5px; color: var(--dim); }
+
+  /* ---- footer ---- */
+  footer { border-top: 1px solid var(--line); padding: 44px 0 60px; color: var(--dim); font-size: 13.5px; line-height: 1.7; }
+  footer a { color: var(--cyan); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+  footer .brand { font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 18px; color: var(--ink); margin-bottom: 10px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .blob, .doodad, .wiggle, .marquee-inner, .yt-progress i { animation: none !important; }
+    .rev { opacity: 1; transform: none; transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="blobs">
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+  <div class="blob b3"></div>
+</div>
+
+<header class="wrap">
+  <span class="doodad" style="top:12%; left:6%;">⚾</span>
+  <span class="doodad" style="top:24%; right:8%; animation-delay:-2s;">🏏</span>
+  <span class="doodad" style="top:64%; left:12%; animation-delay:-4s;">✨</span>
+  <span class="doodad" style="top:70%; right:14%; animation-delay:-5.5s;">⭐</span>
+
+  <div class="badge">🧠 Built for restless hands · <b>free Chrome extension</b></div>
+  <h1>Can't sit still?<br /><span class="zap">Don't.</span> <span class="wiggle">⚾</span></h1>
+  <p class="sub">
+    FidgetBat floats a <b>physics bat-and-ball toy over your YouTube videos</b>.
+    Grab the bat, swing it with your mouse, smack the ball around the screen —
+    while the podcast keeps playing. <b>Your hands fidget. Your brain watches.</b>
+  </p>
+  <div class="cta-row">
+    <a class="cta" href="fidgetbat.zip" download>⬇ Download for Chrome — free</a>
+    <a class="cta-ghost" href="#demo">▶ Try it right here first</a>
+  </div>
+  <p class="cta-note" style="margin-top:14px;">Installs in about 60 seconds · no account · works on any YouTube video</p>
+
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-inner">
+      <span>SWING <b>•</b> WATCH <b>•</b> HIT <b>•</b> UNLOCK <b>•</b> FIDGET <b>•</b> REPEAT <b>•</b></span><span>SWING <b>•</b> WATCH <b>•</b> HIT <b>•</b> UNLOCK <b>•</b> FIDGET <b>•</b> REPEAT <b>•</b></span><span>SWING <b>•</b> WATCH <b>•</b> HIT <b>•</b> UNLOCK <b>•</b> FIDGET <b>•</b> REPEAT <b>•</b></span><span>SWING <b>•</b> WATCH <b>•</b> HIT <b>•</b> UNLOCK <b>•</b> FIDGET <b>•</b> REPEAT <b>•</b></span>
+    </div>
+  </div>
+</header>
+
+<section id="demo" class="wrap rev">
+  <p class="kicker">Live demo — no install needed</p>
+  <h2>Swing it. Right now.</h2>
+  <p class="lead">This is the actual game running on a pretend video. <b>Click and hold the dashed ring</b> at the knob of the bat, then whip your mouse. Hit the ball with the fat end. That's it — that's the whole fidget.</p>
+  <div class="demo-shell">
+    <div class="yt-chrome">
+      <span class="yt-dot red"></span><span class="yt-dot"></span><span class="yt-dot"></span>
+      <span class="yt-url">youtube.com/watch?v=that-3-hour-podcast-you-swore-you-would-finish</span>
+    </div>
+    <div id="movie_player">
+      <div class="fake-video">
+        <div class="fv-title">▶ Pretend 3-hour podcast</div>
+        <div class="fv-sub">(imagine two guys with microphones)</div>
+      </div>
+      <div class="yt-bar"></div>
+      <div class="yt-progress"><i></i></div>
+      <div class="demo-gate" id="demo-gate">
+        <div class="dg-inner">
+          <div class="dg-emoji">⚾🔥</div>
+          <h3>Nice swinging!</h3>
+          <p>That's the demo limit — to play more (and keep your hits forever), get the extension.</p>
+          <a class="cta" href="fidgetbat.zip" download>⬇ Download the Chrome extension</a>
+        </div>
+      </div>
+    </div>
+    <p class="demo-hint">Grab the <b>dashed ring</b> → swing → hit with the barrel. Sound on 🔊 — every bat has its own sound.</p>
+  </div>
+</section>
+
+<section class="wrap rev">
+  <p class="kicker">Why this works</p>
+  <h2>Fidgeting isn't a bug.<br />It's how some brains focus.</h2>
+  <p class="lead">If you've ever clicked a pen for an entire lecture or spun your phone through a whole meeting — this is for you. The research on "restless hands" is genuinely interesting:</p>
+  <div class="grid3">
+    <div class="card">
+      <span class="ic">🔬</span>
+      <h3>Movement ↔ attention</h3>
+      <p><a href="https://health.ucdavis.edu/news/headlines/does-fidgeting-help-people-with-adhd-focus-/2024/10" target="_blank" rel="noopener">UC Davis researchers</a> found fidgeting was associated with better cognitive performance in people with ADHD — in kids <em>and</em> adults.</p>
+    </div>
+    <div class="card">
+      <span class="ic">⏳</span>
+      <h3>It grows over time</h3>
+      <p>In a <a href="https://www.frontiersin.org/journals/psychiatry/articles/10.3389/fpsyt.2024.1394096/full" target="_blank" rel="noopener">2024 study of adults with ADHD</a>, the longer a task ran, the more fidgeting helped — exactly when long videos start losing you.</p>
+    </div>
+    <div class="card">
+      <span class="ic">🖐️</span>
+      <h3>The second-task trick</h3>
+      <p><a href="https://chadd.org/attention-article/how-does-fidgeting-enhance-focus-for-individuals-with-adhd/" target="_blank" rel="noopener">Attention experts</a> describe how a mindless secondary activity can help the brain stay locked on the primary one. FidgetBat <em>is</em> that secondary task — built into YouTube.</p>
+    </div>
+  </div>
+  <p class="fineprint">FidgetBat is a toy, not a treatment — we just think the research above is a great excuse to hit a ball with a bat while you watch videos. If focus struggles are getting in your way, a clinician beats a Chrome extension.</p>
+</section>
+
+<section class="wrap rev">
+  <p class="kicker">Designed for fidgeting</p>
+  <h2>A toy, not a game you can lose</h2>
+  <p class="lead">No timers. No fail states. No "game over". Just satisfying physics that's always there when your hands get restless — and quietly deep when you want it to be.</p>
+  <div class="grid2">
+    <div class="feat"><span class="ic">🏏</span><div><h3>Real swing physics</h3><p>The bat has weight and whip. Slow circles feel lazy; a hard flick <b>launches</b> the ball with hitstop, screen shake and a crack that scales with how hard you connected.</p></div></div>
+    <div class="feat"><span class="ic">👻</span><div><h3>Ghost mode</h3><p>One click makes the whole toy ~75% transparent with clean outlines — you fidget <b>without blocking the video</b>. The point is watching, after all.</p></div></div>
+    <div class="feat"><span class="ic">🎯</span><div><h3>Skill that sneaks up on you</h3><p>Only the barrel scores, the tip pays <b>double</b>, and spinning the bat like a blender earns nothing. You'll get better without noticing you were trying.</p></div></div>
+    <div class="feat"><span class="ic">🔊</span><div><h3>Every bat sounds different</h3><p>Wood thocks. Metal pings. The lightsaber hums. A pool noodle... thuds. Swing sounds and hit sounds change with every bat you equip — or mute it all.</p></div></div>
+    <div class="feat"><span class="ic">▶️</span><div><h3>YouTube stays in charge</h3><p>Clicks pass straight through to the video unless you're grabbing the bat. Pause, scrub, fullscreen — everything works. The game pauses itself in background tabs.</p></div></div>
+    <div class="feat"><span class="ic">💾</span><div><h3>Progress that's always yours</h3><p>Hits, combos, unlocks and equipped gear save automatically per difficulty. Close the tab mid-swing; it's all there tomorrow.</p></div></div>
+  </div>
+</section>
+
+<section class="wrap rev">
+  <p class="kicker">The long game</p>
+  <h2>68 unlockables. Four difficulties.<br />A grind measured in <span style="color:var(--gold)">years</span>.</h2>
+  <p class="lead">Every difficulty has its own 17-step reward ladder — bats, balls, trails and hit effects — from <b>5 hits</b> to <b>1,000,000</b>. The first unlock lands in your first minute. The last one is a lifestyle.</p>
+  <div class="ladder" id="ladder" aria-hidden="true"></div>
+  <div class="ladder-cap"><span>5 hits — Tennis Ball 🎾</span><span><b>1,000,000 hits — THE LEGEND 🐐</b></span></div>
+  <div class="diffs">
+    <div class="diff"><h4 style="color:var(--green)">🟢 Rookie</h4><p>Big bat, floaty ball, generous sweet spot. Beach balls and rubber duckies.</p></div>
+    <div class="diff"><h4 style="color:var(--cyan)">🔵 Pro</h4><p>The standard kit. Neon bats, lightsabers, galaxy balls.</p></div>
+    <div class="diff"><h4 style="color:var(--purple)">🟣 All-Star</h4><p>Smaller bat, heavier gravity. Magma, glaciers, auroras.</p></div>
+    <div class="diff"><h4 style="color:var(--red)">🔴 Legend</h4><p>Tiny bat, brutal physics. Excalibat, Phoenix Egg... and THE LEGEND.</p></div>
+  </div>
+</section>
+
+<section class="wrap rev" id="install">
+  <p class="kicker">Get it</p>
+  <h2>Installed in about 60 seconds</h2>
+  <div class="steps">
+    <div class="step"><span class="n">1</span><p><b>Download</b> the extension: <a class="cta" style="font-size:14px; padding:10px 18px;" href="fidgetbat.zip" download>⬇ fidgetbat.zip</a> &nbsp;then unzip it anywhere you'll remember.</p></div>
+    <div class="step"><span class="n">2</span><p>Open <code>chrome://extensions</code> in Chrome and flip on <b>Developer mode</b> (top-right toggle).</p></div>
+    <div class="step"><span class="n">3</span><p>Click <b>Load unpacked</b> and pick the unzipped <code>FidgetBat</code> folder.</p></div>
+    <div class="step"><span class="n">4</span><p>Open any YouTube video and click the <b>FidgetBat icon</b> in your toolbar. Grab the bat. You know what to do.</p></div>
+  </div>
+  <p class="webstore-note">Chrome Web Store listing coming soon — for now it installs as an unpacked extension, which takes one extra click and zero trust falls.</p>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="brand">FidgetBat ⚾</div>
+    <p>A free, open Chrome extension for people whose hands need something to do. No accounts, no tracking, no ads — your hit count lives in your own browser.</p>
+    <p style="margin-top:10px;">Research mentioned above: <a href="https://health.ucdavis.edu/news/headlines/does-fidgeting-help-people-with-adhd-focus-/2024/10" target="_blank" rel="noopener">UC Davis Health on fidgeting &amp; ADHD</a> · <a href="https://www.frontiersin.org/journals/psychiatry/articles/10.3389/fpsyt.2024.1394096/full" target="_blank" rel="noopener">Frontiers in Psychiatry (2024)</a> · <a href="https://chadd.org/attention-article/how-does-fidgeting-enhance-focus-for-individuals-with-adhd/" target="_blank" rel="noopener">CHADD on fidgeting &amp; focus</a>. FidgetBat is a toy and isn't affiliated with, or a substitute for, any of it.</p>
+  </div>
+</footer>
+
+<script>
+  // ---- chrome.* stub so the real extension content script runs as a web demo ----
+  window.chrome = window.chrome || {};
+  window.chrome.runtime = { onMessage: { addListener(fn) { window.__fbOnMessage = fn; } } };
+  window.chrome.storage = {
+    local: {
+      get(keys, cb) { cb(JSON.parse(localStorage.fb_store || '{}')); },
+      set(obj) {
+        const cur = JSON.parse(localStorage.fb_store || '{}');
+        Object.assign(cur, obj);
+        localStorage.fb_store = JSON.stringify(cur);
+      },
+    },
+  };
+</script>
+<script src="assets/fidgetbat.js"></script>
+<script>
+  // Auto-start the demo once the player exists.
+  setTimeout(() => { if (window.__fidgetBatToggle) window.__fidgetBatToggle(); }, 300);
+
+  // Demo gate: after enough hits this visit, pitch the extension.
+  const DEMO_HIT_LIMIT = 25;
+  let demoStartHits = null;
+  const gateEl = document.getElementById('demo-gate');
+  const gateTimer = setInterval(() => {
+    const S = window.__fidgetBatState;
+    if (!S || !S.active) return;
+    const total = Object.values(S.prog).reduce((a, p) => a + p.hits, 0);
+    if (demoStartHits === null) demoStartHits = total;
+    if (total - demoStartHits >= DEMO_HIT_LIMIT) {
+      clearInterval(gateTimer);
+      window.__fidgetBatToggle(); // stop the game (progress is already saved)
+      gateEl.classList.add('show');
+    }
+  }, 400);
+
+  // Scroll-reveal.
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting) { e.target.classList.add('vis'); io.unobserve(e.target); }
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.rev').forEach((el) => io.observe(el));
+
+  // Grind ladder bars (log scale so 1M doesn't flatten everything).
+  const LADDER = [5, 15, 40, 90, 200, 450, 1000, 2200, 4500, 9000, 18000, 35000, 70000, 140000, 280000, 550000, 1000000];
+  const ladderEl = document.getElementById('ladder');
+  const maxLog = Math.log10(1000000);
+  LADDER.forEach((v, i) => {
+    const rung = document.createElement('div');
+    rung.className = 'rung' + (i === LADDER.length - 1 ? ' gold' : '');
+    rung.innerHTML = `<div class="bar"></div><div class="num">${v.toLocaleString()}</div>`;
+    ladderEl.appendChild(rung);
+  });
+  const ladderIO = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) {
+      document.querySelectorAll('.rung').forEach((r, i) => {
+        setTimeout(() => {
+          r.querySelector('.bar').style.height = `${8 + (Math.log10(LADDER[i]) / maxLog) * 92}%`;
+        }, i * 60);
+      });
+      ladderIO.disconnect();
+    }
+  }, { threshold: 0.3 });
+  ladderIO.observe(ladderEl);
+</script>
+</body>
+</html>

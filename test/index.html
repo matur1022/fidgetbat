@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>FidgetBat test harness</title>
+  <link rel="stylesheet" href="../overlay.css" />
+  <style>
+    body { margin: 0; background: #181818; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 24px; }
+    h1 { color: #eee; font-size: 16px; margin: 0; }
+    /* Fake YouTube player */
+    #movie_player {
+      position: relative;
+      width: 854px;
+      height: 480px;
+      background: linear-gradient(135deg, #2b2b3a, #11111a);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    #movie_player .fake-video {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255,255,255,0.25);
+      font-size: 28px;
+    }
+    .hint { color: #888; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>FidgetBat test harness (fake YouTube player)</h1>
+  <div id="movie_player">
+    <div class="fake-video">▶ pretend podcast video</div>
+  </div>
+  <div class="hint">Grab the dashed ring at the bottom of the bat and swing.</div>
+
+  <script>
+    // Stub the chrome extension APIs the content script touches.
+    window.chrome = {
+      runtime: {
+        onMessage: { addListener(fn) { window.__fbOnMessage = fn; } },
+      },
+      storage: {
+        local: {
+          get(keys, cb) { cb(JSON.parse(localStorage.fb_store || '{}')); },
+          set(obj) {
+            const cur = JSON.parse(localStorage.fb_store || '{}');
+            Object.assign(cur, obj);
+            localStorage.fb_store = JSON.stringify(cur);
+          },
+        },
+      },
+    };
+  </script>
+  <script src="../content.js"></script>
+  <script>
+    // Auto-activate the overlay once loaded.
+    setTimeout(() => window.__fidgetBatToggle(), 200);
+  </script>
+</body>
+</html>
