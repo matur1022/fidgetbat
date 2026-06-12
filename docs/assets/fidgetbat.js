@@ -988,14 +988,24 @@
     if (v.ice) noiseHit(0.22, 0.04, 5200, 2600, 'bandpass', 3);
   }
 
-  function whoosh() {
+  // Swing swish: pitch, loudness, and snap all scale with tip speed —
+  // lazy waves sigh low and soft, hard whips swish high and sharp.
+  // A touch of random jitter keeps repeated swings from sounding cloned.
+  function whoosh(speed) {
     if (S.muted || !S.actx) return;
     const v = batVoice();
     const w = WHOOSH_PROFILES[v.arch];
-    // Each bat's swing sweeps in its own register too.
-    const p = Math.sqrt(v.pitch);
-    noiseHit(w.dur, 0.05, w.lo * p, w.hi * p, 'bandpass', 1.2);
-    if (w.hum) tone(140 * v.pitch, w.dur, 0.045, 'sawtooth', { pitchEnd: 240 * v.pitch });
+    const s = Math.min(Math.max(speed || 0.6, 0.4), 1.6);
+    const jitter = 0.92 + Math.random() * 0.16;
+    const p = Math.sqrt(v.pitch) * (0.55 + s * 0.55) * jitter;
+    const dur = Math.max(0.12, w.dur * (1.25 - s * 0.4));
+    const gain = 0.025 + 0.045 * s;
+    // Higher Q = narrower band = airier "fwish" instead of a rumble.
+    noiseHit(dur, gain, w.lo * p, w.hi * p, 'bandpass', 2.6);
+    if (w.hum) {
+      const hp = v.pitch * (0.7 + s * 0.5);
+      tone(140 * hp, dur, 0.04, 'sawtooth', { pitchEnd: 240 * hp });
+    }
   }
 
   function unlockSound() {
@@ -1113,7 +1123,7 @@
     if (S.grabbing && tipSpeed > S.h * 1.5 && S.swingCool <= 0) {
       S.swingCool = 0.35;
       S.stats.swings++;
-      whoosh();
+      whoosh(tipSpeed / (S.h * 3));
     }
 
     // Golden ball event: rare, time-limited 3× multiplier (variable-ratio reward).
