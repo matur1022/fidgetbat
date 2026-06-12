@@ -60,15 +60,16 @@
   .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
 
   /* ---- hero ---- */
-  header.wrap { position: relative; padding: 76px 24px 44px; text-align: center; overflow: hidden; }
-  .hero-glow {
-    position: absolute; width: 380px; height: 380px; border-radius: 50%;
-    left: 50%; top: 40%; pointer-events: none; z-index: -1;
-    background: radial-gradient(circle, rgba(126, 242, 168, 0.16), rgba(110, 231, 255, 0.08) 45%, transparent 70%);
-    transform: translate(-50%, -50%); filter: blur(8px);
-    opacity: 0; transition: opacity 0.4s ease;
+  /* Full-bleed hero — the whole strip is the interactive zone. */
+  #hero { position: relative; padding: 76px 0 0; text-align: center; overflow: hidden; }
+  #hero .hero-inner { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+  /* A mini game-bat dangles from the cursor — the app, demoed by the mouse. */
+  .cursor-bat {
+    position: absolute; left: 0; top: 0; width: 80px; height: 16px;
+    pointer-events: none; z-index: 2; transform-origin: 7px 8px;
+    opacity: 0; transition: opacity 0.25s ease;
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.45));
   }
-  header.wrap:hover .hero-glow { opacity: 1; }
   .badge {
     display: inline-block; border: 1px solid var(--line); border-radius: 999px;
     padding: 7px 16px; font-size: 13px; color: var(--dim); margin-bottom: 26px;
@@ -292,7 +293,9 @@
 
   /* ---- mobile ---- */
   @media (max-width: 560px) {
-    header.wrap { padding: 52px 18px 36px; }
+    #hero { padding: 52px 0 0; }
+    #hero .hero-inner { padding: 0 18px; }
+    .cursor-bat { display: none; }
     section.wrap { padding: 52px 18px 44px; }
     .badge { font-size: 12px; padding: 6px 12px; margin-bottom: 20px; }
     .cta { font-size: 16px; padding: 14px 24px; }
@@ -333,13 +336,13 @@
   <div class="blob b3"></div>
 </div>
 
-<header class="wrap">
-  <div class="hero-glow" id="hero-glow"></div>
+<header id="hero">
   <span class="doodad" style="top:12%; left:6%;">⚾</span>
   <span class="doodad" style="top:24%; right:8%; animation-delay:-2s;">🏏</span>
   <span class="doodad" style="top:64%; left:12%; animation-delay:-4s;">✨</span>
   <span class="doodad" style="top:70%; right:14%; animation-delay:-5.5s;">⭐</span>
 
+  <div class="hero-inner">
   <div class="badge">🧠 Built for restless hands · <b>free Chrome extension</b></div>
   <h1>Can't sit still? Don't.<br /><span class="zap">Fidget while you watch.</span> <span class="wiggle">⚾</span></h1>
   <p class="sub">
@@ -352,6 +355,7 @@
     <a class="cta-ghost" href="#demo">▶ Try it right here first</a>
   </div>
   <p class="cta-note" style="margin-top:14px;">Installs in about 60 seconds · no account · works on any YouTube video</p>
+  </div>
 
   <div class="marquee" aria-hidden="true">
     <div class="marquee-inner">
@@ -507,33 +511,73 @@
     }
   }, 400);
 
-  // Hero: cursor-following glow + doodad parallax (skipped for reduced-motion).
+  // Hero: a mini game-bat dangles from the cursor (same physics idea as the
+  // real toy — pinned handle, swinging barrel) + doodad parallax.
+  // Skipped entirely for reduced-motion users.
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    const headerEl = document.querySelector('header.wrap');
-    const glowEl = document.getElementById('hero-glow');
-    const doodads = [...headerEl.querySelectorAll('.doodad')];
-    let tx = 0, ty = 0, gx = 0, gy = 0, animating = false;
-    headerEl.addEventListener('mousemove', (e) => {
-      const r = headerEl.getBoundingClientRect();
-      tx = e.clientX - r.left;
-      ty = e.clientY - r.top;
+    const heroEl = document.getElementById('hero');
+    const doodads = [...heroEl.querySelectorAll('.doodad')];
+    const batEl = document.createElement('div');
+    batEl.className = 'cursor-bat';
+    batEl.innerHTML = `<svg viewBox="0 0 80 16" width="80" height="16" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="cbg" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#7a4a22"/><stop offset="0.55" stop-color="#a8743a"/><stop offset="1" stop-color="#c68642"/>
+      </linearGradient></defs>
+      <path d="M6 8 Q 34 5.5 76 2 Q 79 8 76 14 Q 34 10.5 6 8 Z" fill="url(#cbg)"/>
+      <circle cx="7" cy="8" r="4" fill="#6b4220"/>
+    </svg>`;
+    heroEl.appendChild(batEl);
+
+    const BAT_LEN = 66;
+    let mx = 0, my = 0, hx = 0, hy = 0;
+    const tip = { x: 0, y: 0, px: 0, py: 0 };
+    let shown = false, animating = false;
+
+    heroEl.addEventListener('mousemove', (e) => {
+      const r = heroEl.getBoundingClientRect();
+      mx = e.clientX - r.left;
+      my = e.clientY - r.top;
+      if (!shown) {
+        shown = true;
+        hx = mx; hy = my;
+        tip.x = mx + BAT_LEN; tip.y = my;
+        tip.px = tip.x; tip.py = tip.y;
+        batEl.style.opacity = 1;
+      }
       if (!animating) { animating = true; requestAnimationFrame(heroTick); }
     });
+    heroEl.addEventListener('mouseleave', () => {
+      shown = false;
+      batEl.style.opacity = 0;
+    });
+
     function heroTick() {
-      gx += (tx - gx) * 0.1;
-      gy += (ty - gy) * 0.1;
-      glowEl.style.left = gx + 'px';
-      glowEl.style.top = gy + 'px';
-      const r = headerEl.getBoundingClientRect();
-      const px = gx / r.width - 0.5, py = gy / r.height - 0.5;
-      doodads.forEach((d, i) => {
-        // Each doodad drifts opposite the cursor at its own depth — margins,
-        // not transforms, so the floaty animation keeps running underneath.
+      // Handle eases to the cursor; tip is a verlet point with gravity,
+      // constrained to bat length — so the barrel swings and dangles.
+      hx += (mx - hx) * 0.3;
+      hy += (my - hy) * 0.3;
+      const vx = (tip.x - tip.px) * 0.985;
+      const vy = (tip.y - tip.py) * 0.985;
+      tip.px = tip.x; tip.py = tip.y;
+      tip.x += vx;
+      tip.y += vy + 0.5; // gravity — the bat hangs when you stop
+      const dx = tip.x - hx, dy = tip.y - hy;
+      const d = Math.hypot(dx, dy) || 1;
+      tip.x = hx + (dx / d) * BAT_LEN;
+      tip.y = hy + (dy / d) * BAT_LEN;
+      const ang = Math.atan2(tip.y - hy, tip.x - hx);
+      batEl.style.transform = `translate(${hx - 7}px, ${hy - 8}px) rotate(${ang}rad)`;
+
+      const r = heroEl.getBoundingClientRect();
+      const px = hx / r.width - 0.5, py = hy / r.height - 0.5;
+      doodads.forEach((dd, i) => {
+        // Margins, not transforms, so the floaty animation keeps running.
         const depth = 18 + (i % 4) * 12;
-        d.style.marginLeft = (-px * depth) + 'px';
-        d.style.marginTop = (-py * depth) + 'px';
+        dd.style.marginLeft = (-px * depth) + 'px';
+        dd.style.marginTop = (-py * depth) + 'px';
       });
-      if (Math.abs(tx - gx) > 0.4 || Math.abs(ty - gy) > 0.4) {
+
+      if (shown) {
         requestAnimationFrame(heroTick);
       } else {
         animating = false;
