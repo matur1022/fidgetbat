@@ -137,7 +137,7 @@
     particles: [],
     target: null, targetTimer: 6,
     hitCooldown: 0,
-    combo: 0,
+    combo: 0, comboTimer: 0,
     diff: 'pro',
     prog: { rookie: { hits: 0, comboBest: 0 }, pro: { hits: 0, comboBest: 0 }, allstar: { hits: 0, comboBest: 0 }, legend: { hits: 0, comboBest: 0 } },
     sel: { bat: 'wood', ball: 'baseball', trail: 'none', fx: 'nofx' },
@@ -157,6 +157,7 @@
   };
 
   const DT = 1 / 120; // fixed physics substep
+  const COMBO_WINDOW = 6; // seconds to land the next sweet-spot hit and keep the chain
 
   // ----- Storage ----------------------------------------------------------------
 
@@ -213,6 +214,7 @@
     if (S.diff === id) return;
     S.diff = id;
     S.combo = 0;
+    S.comboTimer = 0;
     initWorld();
     updateHUD();
     save();
@@ -592,7 +594,7 @@
       ['🖱️', 'Click and hold the dashed ring at the knob of the bat, then swing with your mouse.'],
       ['🎯', 'Only the barrel scores. Past the thin white line is the sweet spot — worth 2×.'],
       ['🚫', 'Rapid taps don\'t score. Let the ball fly between hits — spinning earns nothing.'],
-      ['🔄', 'Juggle! Combos build with every scoring hit and reset when the ball touches the floor.'],
+      ['🔄', 'Combos are sweet chains: land sweet-spot hits within 6 seconds of each other. The floor doesn\'t break them — the clock does.'],
       ['⭐', 'Knock the ball into gold stars for +5. Random crits hit for triple.'],
       ['✨', 'The golden ball appears now and then — everything counts 3× while it glows.'],
       ['🏆', 'Each difficulty has its own hit counter and 17 rewards. Anything you earn anywhere can be equipped everywhere.'],
@@ -667,6 +669,7 @@
     S.target = null;
     S.targetTimer = 5 + Math.random() * 8;
     S.combo = 0;
+    S.comboTimer = 0;
     S.freeze = 0;
     S.shakeMag = 0;
     S.sinceHitDist = 1e9; // first hit always eligible
@@ -1045,7 +1048,6 @@
       ball.vy = -ball.vy * e;
       ball.vx *= phys.slide; // floor friction — glaciers slide
       bounced = true;
-      comboBreak();
     }
     if (bounced && Math.hypot(ball.vx, ball.vy) > S.h * 0.5) blip(150, 0.04, 0.03, 'sine');
 
@@ -1059,6 +1061,10 @@
     // --- Hit cooldown / timers ---
     if (S.hitCooldown > 0) S.hitCooldown -= dt;
     if (S.swingCool > 0) S.swingCool -= dt;
+    if (S.comboTimer > 0) {
+      S.comboTimer -= dt;
+      if (S.comboTimer <= 0) comboBreak();
+    }
     if (ball.squash) ball.squash *= Math.exp(-dt * 9);
 
     // Swing whoosh: audio feedback for the swing itself, hit or miss.
@@ -1204,16 +1210,20 @@
       S.shakeMag = Math.min(S.shakeMag + power * 9, 12);
       if (power > 0.45) S.freeze = 0.03 + power * 0.05;
 
-      // Combo: consecutive scoring hits without the ball touching the floor.
-      S.combo += 1;
-      if (S.combo > curProg().comboBest) curProg().comboBest = S.combo;
-
       // Sweet spot (outer end of the barrel) doubles the hit;
       // crits are an occasional surprise bonus (variable-ratio reward).
       const sweet = t >= d.sweetFrom;
       const crit = Math.random() < 0.08;
       if (sweet) S.stats.sweet++;
       if (crit) S.stats.crits++;
+
+      // Combo: chain SWEET-SPOT hits, each within the combo window of the
+      // last. The floor doesn't break it — only letting the clock run out.
+      if (sweet) {
+        S.combo += 1;
+        S.comboTimer = COMBO_WINDOW;
+        if (S.combo > curProg().comboBest) curProg().comboBest = S.combo;
+      }
       const mult = S.golden ? 3 : 1;
       const gained = (sweet ? 2 : 1) * (crit ? 3 : 1) * mult;
       addHits(gained);
@@ -1224,13 +1234,12 @@
         floatText(ball.x, ball.y - ball.r * 2, `CRIT +${gained}`, 19, '#ff5c5c');
         blip(120, 0.12, 0.18, 'square');
       } else if (sweet) {
-        floatText(ball.x, ball.y - ball.r * 2, `SWEET +${gained}`, 16, '#6ee7ff');
+        const label = S.combo >= 2 ? `SWEET x${S.combo}` : `SWEET +${gained}`;
+        floatText(ball.x, ball.y - ball.r * 2, label, Math.min(16 + S.combo, 26), '#6ee7ff');
         // "Pure contact" — the clean crack of perfect barrel contact,
         // layered over the bat's own voice.
         noiseHit(0.03, 0.16, 4800, 2800, 'highpass');
         tone(1318, 0.16, 0.07, 'sine');
-      } else if (S.combo >= 2) {
-        floatText(ball.x, ball.y - ball.r * 2, `x${S.combo}`, Math.min(13 + S.combo, 26), color);
       } else {
         floatText(ball.x, ball.y - ball.r * 2, `+${gained}`, 13, color);
       }
@@ -1241,10 +1250,11 @@
   }
 
   function comboBreak() {
-    if (S.combo >= 5) {
-      showToast(`🔥 Combo x${S.combo}!`);
+    if (S.combo >= 3) {
+      showToast(`🔥 Sweet chain x${S.combo}!`);
     }
     S.combo = 0;
+    S.comboTimer = 0;
   }
 
   function floatText(x, y, str, size, color) {
@@ -1357,6 +1367,28 @@
     if (S.ghost) drawGhostOutlines(ctx);
     drawGrabRing(ctx);
     drawTexts(ctx);
+    drawComboMeter(ctx);
+    ctx.restore();
+  }
+
+  // Active sweet chain: counter + draining window bar at the top center.
+  function drawComboMeter(ctx) {
+    if (S.combo < 2 || S.comboTimer <= 0) return;
+    const x = S.w / 2, y = 28;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.font = '800 16px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+    ctx.strokeText(`SWEET CHAIN x${S.combo}`, x, y);
+    ctx.fillStyle = '#6ee7ff';
+    ctx.fillText(`SWEET CHAIN x${S.combo}`, x, y);
+    const w = 96;
+    const frac = Math.max(S.comboTimer / COMBO_WINDOW, 0);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillRect(x - w / 2, y + 8, w, 4);
+    ctx.fillStyle = '#6ee7ff';
+    ctx.fillRect(x - w / 2, y + 8, w * frac, 4);
     ctx.restore();
   }
 
