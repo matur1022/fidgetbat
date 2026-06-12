@@ -313,6 +313,46 @@
   opacity: 1;
 }
 
+.fb-unlock {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  z-index: 10000;
+  transition: opacity 0.3s ease;
+  animation: fb-unlock-pop 0.45s cubic-bezier(0.2, 1.6, 0.4, 1);
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.9);
+}
+
+.fb-unlock-kicker {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.25em;
+  color: #ffd24a;
+  margin-bottom: 6px;
+}
+
+.fb-unlock-name {
+  font-size: clamp(24px, 5vw, 42px);
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.1;
+}
+
+.fb-unlock-sub {
+  margin-top: 8px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+@keyframes fb-unlock-pop {
+  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  60% { transform: translate(-50%, -50%) scale(1.12); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+
 .fb-hidden {
   opacity: 0;
   visibility: hidden;

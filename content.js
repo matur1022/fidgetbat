@@ -345,6 +345,10 @@
     toast.className = 'fb-toast fb-hidden';
     ov.appendChild(toast);
 
+    const unlock = document.createElement('div');
+    unlock.className = 'fb-unlock fb-hidden';
+    ov.appendChild(unlock);
+
     // Keep HUD clicks away from YouTube.
     hud.addEventListener('mousedown', (e) => e.stopPropagation());
     panel.addEventListener('mousedown', (e) => e.stopPropagation());
@@ -434,6 +438,22 @@
       pill.title = `${d.label} track complete! — click for rewards`;
       chip.style.display = 'none';
     }
+  }
+
+  // Full celebration when a reward unlocks: center-screen banner,
+  // confetti everywhere, shake, fanfare.
+  function showUnlock(label) {
+    const el = S.overlay.querySelector('.fb-unlock');
+    el.innerHTML = '<div class="fb-unlock-kicker">🎉 UNLOCKED</div><div class="fb-unlock-name"></div><div class="fb-unlock-sub">equip it in the ⚾ menu</div>';
+    el.querySelector('.fb-unlock-name').textContent = label;
+    el.classList.remove('fb-hidden');
+    clearTimeout(S.unlockTimer);
+    S.unlockTimer = setTimeout(() => el.classList.add('fb-hidden'), 3000);
+    unlockSound();
+    S.shakeMag = Math.min(S.shakeMag + 6, 12);
+    spawnParticles(S.w / 2, S.h / 2, 40, 'rainbow', true);
+    spawnParticles(S.w * 0.25, S.h * 0.4, 16, '#7ef2a8');
+    spawnParticles(S.w * 0.75, S.h * 0.4, 16, '#ffd24a');
   }
 
   function showToast(text) {
@@ -650,13 +670,17 @@
     const d = DIFF();
     const len = Math.min(Math.max(Math.min(S.w, S.h) * 0.26, 80), 210) * d.batScale;
     const thick = len * 0.13;
-    const y = S.h - thick;
+    // The bat starts hovering mid-screen (asleep — no gravity) so it's
+    // front and center until the first grab wakes its physics.
+    const y = S.h * 0.45;
     S.bat = {
       len, thick,
       // A = handle (grab point), B = barrel tip. Verlet points.
       A: { x: S.w * 0.5 + len / 2, y, px: S.w * 0.5 + len / 2, py: y },
       B: { x: S.w * 0.5 - len / 2, y, px: S.w * 0.5 - len / 2, py: y },
     };
+    S.batAwake = false;
+    S.batHover = { ax: S.w * 0.5 + len / 2, bx: S.w * 0.5 - len / 2, y };
     const r = Math.min(Math.max(Math.min(S.w, S.h) * 0.030, 9), 22) * d.ballScale;
     S.ball = {
       x: S.w * 0.35, y: S.h * 0.25, r, rBase: r,
@@ -705,7 +729,14 @@
 
   function onMouseDown(e) {
     if (!S.overlay || S.paused || e.button !== 0) return;
-    if (S.hud.contains(e.target) || S.panel.contains(e.target)) return;
+    // e.target can be `window` for synthetic events — contains() throws on non-Nodes.
+    const tgt = e.target instanceof Node ? e.target : null;
+    const inMenu = !!tgt && (S.panel.contains(tgt) || S.hud.contains(tgt));
+    // Clicking anywhere outside the menu closes it — including grabbing the bat.
+    if (!inMenu && !S.panel.classList.contains('fb-hidden')) {
+      S.panel.classList.add('fb-hidden');
+    }
+    if (inMenu) return;
     const r = S.overlay.getBoundingClientRect();
     const mx = e.clientX - r.left, my = e.clientY - r.top;
     if (mx < 0 || my < 0 || mx > r.width || my > r.height) return;
@@ -713,6 +744,7 @@
     const dx = mx - S.bat.A.x, dy = my - S.bat.A.y;
     if (dx * dx + dy * dy <= grabRadius() ** 2) {
       S.grabbing = true;
+      S.batAwake = true; // first grab wakes the hovering bat into real physics
       S.swallowClicks = true;
       ensureAudio();
       e.preventDefault();
@@ -994,32 +1026,41 @@
     const g = gravity();
 
     // --- Bat: two verlet points + a rigid distance constraint ---
-    verlet(bat.A, dt, g);
-    verlet(bat.B, dt, g);
+    if (!S.batAwake) {
+      // Asleep: hover mid-screen with a gentle bob until the first grab.
+      const bob = Math.sin(performance.now() / 500) * 6;
+      bat.A.x = S.batHover.ax; bat.A.y = S.batHover.y + bob;
+      bat.B.x = S.batHover.bx; bat.B.y = S.batHover.y + bob;
+      bat.A.px = bat.A.x; bat.A.py = bat.A.y;
+      bat.B.px = bat.B.x; bat.B.py = bat.B.y;
+    } else {
+      verlet(bat.A, dt, g);
+      verlet(bat.B, dt, g);
 
-    if (S.grabbing) {
-      bat.A.x = S.mouse.x;
-      bat.A.y = S.mouse.y;
-    }
-
-    for (let i = 0; i < 6; i++) {
-      const dx = bat.B.x - bat.A.x, dy = bat.B.y - bat.A.y;
-      const d = Math.hypot(dx, dy) || 0.0001;
-      const diff = (d - bat.len) / d;
       if (S.grabbing) {
-        bat.B.x -= dx * diff;
-        bat.B.y -= dy * diff;
-      } else {
-        bat.A.x += dx * diff * 0.5;
-        bat.A.y += dy * diff * 0.5;
-        bat.B.x -= dx * diff * 0.5;
-        bat.B.y -= dy * diff * 0.5;
+        bat.A.x = S.mouse.x;
+        bat.A.y = S.mouse.y;
       }
-      if (S.grabbing) { bat.A.x = S.mouse.x; bat.A.y = S.mouse.y; }
-    }
 
-    wallPoint(bat.B, bat.thick * 0.5);
-    if (!S.grabbing) wallPoint(bat.A, bat.thick * 0.5);
+      for (let i = 0; i < 6; i++) {
+        const dx = bat.B.x - bat.A.x, dy = bat.B.y - bat.A.y;
+        const d = Math.hypot(dx, dy) || 0.0001;
+        const diff = (d - bat.len) / d;
+        if (S.grabbing) {
+          bat.B.x -= dx * diff;
+          bat.B.y -= dy * diff;
+        } else {
+          bat.A.x += dx * diff * 0.5;
+          bat.A.y += dy * diff * 0.5;
+          bat.B.x -= dx * diff * 0.5;
+          bat.B.y -= dy * diff * 0.5;
+        }
+        if (S.grabbing) { bat.A.x = S.mouse.x; bat.A.y = S.mouse.y; }
+      }
+
+      wallPoint(bat.B, bat.thick * 0.5);
+      if (!S.grabbing) wallPoint(bat.A, bat.thick * 0.5);
+    }
 
     // --- Ball: explicit Euler, shaped by the equipped ball's personality ---
     const phys = ballPhys();
@@ -1261,7 +1302,8 @@
       const mult = S.golden ? 3 : 1;
       const bank = chainBankValue(S.combo) * mult;
       addHits(bank);
-      floatText(S.w / 2, 64, `CHAIN BANKED +${bank}!`, Math.min(18 + S.combo, 30), '#ffd24a');
+      // Big, lingering payout announcement — you should never miss what you earned.
+      floatText(S.w / 2, S.h * 0.3, `+${bank} HITS BANKED`, Math.min(22 + S.combo * 2, 40), '#ffd24a', 2.4);
       spawnParticles(S.w / 2, 44, Math.min(8 + S.combo * 2, 30), '#ffd24a');
       showToast(`💰 Sweet chain x${S.combo} banked: +${bank}${S.golden ? ' (golden 3×!)' : ''}`);
       bankSound(S.combo);
@@ -1279,8 +1321,9 @@
     setTimeout(() => blip(1320, 0.18, 0.09, 'sine'), steps * 55 + 40);
   }
 
-  function floatText(x, y, str, size, color) {
-    S.texts.push({ x, y, str, size, color, life: 0.8, max: 0.8 });
+  function floatText(x, y, str, size, color, life) {
+    life = life || 0.8;
+    S.texts.push({ x, y, str, size, color, life, max: life });
   }
 
   function addHits(n) {
@@ -1297,9 +1340,7 @@
     }
     for (const r of REWARDS[S.diff]) {
       if (prev < r.hits && p.hits >= r.hits) {
-        showToast(`🎉 Unlocked: ${r.label}`);
-        unlockSound();
-        spawnParticles(S.w / 2, S.h / 3, 24, '#7ef2a8');
+        showUnlock(r.label);
       }
     }
     // Throttled save.
