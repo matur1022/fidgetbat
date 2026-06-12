@@ -89,8 +89,13 @@
     0%, 100% { transform: rotate(-4deg); }
     50% { transform: rotate(5deg) translateY(-3px); }
   }
+  .hero-tagline {
+    margin: 20px auto 0; max-width: 640px;
+    font-size: clamp(18px, 3vw, 26px); font-weight: 700; color: var(--ink);
+    letter-spacing: -0.01em;
+  }
   .sub {
-    margin: 24px auto 0; max-width: 640px; font-size: clamp(16px, 2.4vw, 20px);
+    margin: 16px auto 0; max-width: 600px; font-size: clamp(15px, 2.2vw, 18px);
     color: var(--dim); line-height: 1.55;
   }
   .sub b { color: var(--ink); }
@@ -344,11 +349,11 @@
 
   <div class="hero-inner">
   <div class="badge">🧠 Built for restless hands · <b>free Chrome extension</b></div>
-  <h1>Can't sit still? Fidget while you watch.<br /><span class="zap">Swing a bat over any YouTube video.</span> <span class="wiggle">⚾</span></h1>
+  <h1><span class="zap">Fidget while you watch.</span> <span class="wiggle">⚾</span></h1>
+  <p class="hero-tagline">Swing a physics bat over any YouTube video — free.</p>
   <p class="sub">
-    FidgetBat floats a <b>physics bat-and-ball toy over your YouTube videos</b>.
-    Grab the bat, swing it with your mouse, smack the ball around the screen —
-    while the podcast keeps playing. <b>Your hands fidget. Your brain watches.</b>
+    Grab the bat with your mouse, smack the ball around the screen while the
+    podcast keeps playing. Built for restless hands. <b>Your hands fidget. Your brain watches.</b>
   </p>
   <div class="cta-row">
     <a class="cta" href="fidgetbat.zip" download>⬇ Download for Chrome — free</a>
