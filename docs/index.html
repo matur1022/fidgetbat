@@ -529,9 +529,35 @@
     heroEl.appendChild(batEl);
 
     const BAT_LEN = 66;
-    let mx = 0, my = 0, hx = 0, hy = 0;
+    let mx = 0, my = 0, hx = 0, hy = 0, phx = 0, phy = 0;
     const tip = { x: 0, y: 0, px: 0, py: 0 };
     let shown = false, animating = false;
+
+    // Trackpad support — mouse behavior stays untouched.
+    // Trackpads reveal themselves via their wheel signature: pixel-mode
+    // events with fractional, small, or horizontal deltas. Once detected,
+    // short slow strokes get a whip boost (trackpad strokes are tiny
+    // compared to mouse sweeps). Mice never trip this detector.
+    let trackpadScore = 0, isTrackpad = false;
+    window.addEventListener('wheel', (e) => {
+      if (isTrackpad) return;
+      const fractional = e.deltaY % 1 !== 0 || e.deltaX % 1 !== 0;
+      const trackpadish = e.deltaMode === 0 && (e.deltaX !== 0 || fractional || Math.abs(e.deltaY) < 40);
+      trackpadScore += trackpadish ? 1 : -2;
+      if (trackpadScore >= 4) isTrackpad = true;
+    }, { passive: true });
+
+    // Two-finger flicks over the hero kick the barrel — the natural
+    // trackpad gesture becomes a way to swing the bat. Scrolling itself
+    // is never blocked (passive). Works for wheel mice too, as a bonus.
+    heroEl.addEventListener('wheel', (e) => {
+      if (!shown) return;
+      const kx = Math.max(-60, Math.min(60, e.deltaX)) * 0.35;
+      const ky = Math.max(-60, Math.min(60, e.deltaY)) * 0.35;
+      tip.px += kx;
+      tip.py += ky;
+      if (!animating) { animating = true; requestAnimationFrame(heroTick); }
+    }, { passive: true });
 
     heroEl.addEventListener('mousemove', (e) => {
       const r = heroEl.getBoundingClientRect();
@@ -540,6 +566,7 @@
       if (!shown) {
         shown = true;
         hx = mx; hy = my;
+        phx = hx; phy = hy; // no phantom whip on the first frame
         tip.x = mx + BAT_LEN; tip.y = my;
         tip.px = tip.x; tip.py = tip.y;
         batEl.style.opacity = 1;
@@ -556,6 +583,13 @@
       // constrained to bat length — so the barrel swings and dangles.
       hx += (mx - hx) * 0.3;
       hy += (my - hy) * 0.3;
+      if (isTrackpad) {
+        // Whip amplifier: feed a share of the handle's motion straight into
+        // the barrel so small trackpad strokes still swing satisfyingly.
+        tip.px -= (hx - phx) * 0.55;
+        tip.py -= (hy - phy) * 0.55;
+      }
+      phx = hx; phy = hy;
       const vx = (tip.x - tip.px) * 0.985;
       const vy = (tip.y - tip.py) * 0.985;
       tip.px = tip.x; tip.py = tip.y;
