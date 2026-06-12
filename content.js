@@ -140,6 +140,7 @@
     prog: { rookie: { hits: 0, comboBest: 0 }, pro: { hits: 0, comboBest: 0 }, allstar: { hits: 0, comboBest: 0 }, legend: { hits: 0, comboBest: 0 } },
     sel: { bat: 'wood', ball: 'baseball', trail: 'none', fx: 'nofx' },
     stats: { swings: 0, sweet: 0, crits: 0, stars: 0, seconds: 0 },
+    panelTab: 'rewards',
     endowed: {},
     lastGiftDay: '',
     statSaveAcc: 0,
@@ -447,10 +448,33 @@
     }
   }
 
+  // The panel is a small tabbed menu: Rewards / Stats / How to play.
   function renderPanel() {
     const p = S.panel;
     p.innerHTML = '';
 
+    const tabRow = document.createElement('div');
+    tabRow.className = 'fb-tab-row';
+    for (const [id, label] of [['rewards', '🎁 Rewards'], ['stats', '📊 Stats'], ['help', '❓ How to play']]) {
+      const b = document.createElement('button');
+      b.className = 'fb-tab';
+      if (S.panelTab === id) b.classList.add('fb-selected');
+      b.textContent = label;
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        S.panelTab = id;
+        renderPanel();
+      });
+      tabRow.appendChild(b);
+    }
+    p.appendChild(tabRow);
+
+    if (S.panelTab === 'stats') renderStatsTab(p);
+    else if (S.panelTab === 'help') renderHelpTab(p);
+    else renderRewardsTab(p);
+  }
+
+  function renderRewardsTab(p) {
     // Difficulty switcher.
     const diffRow = document.createElement('div');
     diffRow.className = 'fb-diff-row';
@@ -507,12 +531,13 @@
         }
       }
     }
+  }
 
-    // Lifetime stats — completionist fuel and honest transparency in one.
-    const sh = document.createElement('div');
-    sh.className = 'fb-panel-section';
-    sh.textContent = '📊 Lifetime stats';
-    p.appendChild(sh);
+  function renderStatsTab(p) {
+    const title = document.createElement('div');
+    title.className = 'fb-panel-title';
+    title.textContent = '📊 Lifetime stats';
+    p.appendChild(title);
     const totalHits = DIFFICULTIES.reduce((a, d) => a + S.prog[d.id].hits, 0);
     const secs = Math.floor(S.stats.seconds);
     const timeStr = secs >= 3600
@@ -525,7 +550,6 @@
       ['Crits', S.stats.crits.toLocaleString()],
       ['Stars caught', S.stats.stars.toLocaleString()],
       ['Time fidgeted', timeStr],
-      ['Best combos', DIFFICULTIES.map((d) => `${d.badge}·x${S.prog[d.id].comboBest}`).join('  ')],
     ];
     for (const [label, value] of rows) {
       const row = document.createElement('div');
@@ -536,6 +560,54 @@
       v.textContent = value;
       row.appendChild(l);
       row.appendChild(v);
+      p.appendChild(row);
+    }
+    // Per-difficulty breakdown.
+    const h = document.createElement('div');
+    h.className = 'fb-panel-section';
+    h.textContent = 'Per difficulty';
+    p.appendChild(h);
+    for (const d of DIFFICULTIES) {
+      const row = document.createElement('div');
+      row.className = 'fb-stat-row';
+      const l = document.createElement('span');
+      l.textContent = d.label;
+      l.style.color = d.color;
+      const v = document.createElement('span');
+      v.textContent = `${S.prog[d.id].hits.toLocaleString()} hits · best x${S.prog[d.id].comboBest}`;
+      row.appendChild(l);
+      row.appendChild(v);
+      p.appendChild(row);
+    }
+  }
+
+  function renderHelpTab(p) {
+    const title = document.createElement('div');
+    title.className = 'fb-panel-title';
+    title.textContent = '❓ How to play';
+    p.appendChild(title);
+    const TIPS = [
+      ['🖱️', 'Click and hold the dashed ring at the knob of the bat, then swing with your mouse.'],
+      ['🎯', 'Only the barrel scores. Past the thin white line is the sweet spot — worth 2×.'],
+      ['🚫', 'Rapid taps don\'t score. Let the ball fly between hits — spinning earns nothing.'],
+      ['🔄', 'Juggle! Combos build with every scoring hit and reset when the ball touches the floor.'],
+      ['⭐', 'Knock the ball into gold stars for +5. Random crits hit for triple.'],
+      ['✨', 'The golden ball appears now and then — everything counts 3× while it glows.'],
+      ['🏆', 'Each difficulty has its own hit counter and 17 rewards. Anything you earn anywhere can be equipped everywhere.'],
+      ['⚪', 'Every ball has its own physics and every bat its own sound — try them.'],
+      ['👻', 'Ghost mode makes the game see-through so the video stays watchable. 🔊 mutes all sounds.'],
+      ['▶️', 'Clicks pass through to YouTube unless you\'re grabbing the bat — pause and scrub freely.'],
+    ];
+    for (const [icon, text] of TIPS) {
+      const row = document.createElement('div');
+      row.className = 'fb-help-row';
+      const i = document.createElement('span');
+      i.className = 'fb-help-icon';
+      i.textContent = icon;
+      const t = document.createElement('span');
+      t.textContent = text;
+      row.appendChild(i);
+      row.appendChild(t);
       p.appendChild(row);
     }
   }
