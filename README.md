@@ -25,7 +25,7 @@ A physics bat-and-ball fidget toy that overlays the YouTube player. Grab the bot
 - **Hits** — only genuine swing-hits with the **barrel** count (the outer part of the bat, past the handle). Handle contact just deflects the ball with a dull thud. The HUD pill shows a progress bar toward the next unlock.
 - **Sweet spot** — connect past the faint white line near the tip for a 2× "SWEET" hit.
 - **Travel gate** — after a scoring hit, the ball has to fly a real distance (~half the screen) before the next hit can score. Spinning the bat into the ball farms nothing.
-- **Combos (sweet chains)** — land sweet-spot hits within 6 seconds of each other to build a chain. Normal hits and floor bounces don't break it; only letting the window expire does. An on-screen meter shows the chain and its draining timer. Best chain per difficulty is saved.
+- **Combos (sweet chains)** — land sweet-spot hits within 6 seconds of each other to build a chain. Normal hits and floor bounces don't break it; only letting the window expire does. An on-screen meter shows the chain, its pending bank, and the draining timer. When the chain ends, it **banks bonus hits** on an escalating curve (x2 = +2, x3 = +5, x5 = +14, x10 = +54) — tripled if it ends during a golden ball. Best chain per difficulty is saved.
 - **Crits** — ~8% of hits are critical (+3, red burst, heavy thunk).
 - **Golden ball** — every minute or two the ball turns gold for 12 seconds and all hits count 3×.
 - **Stars** — knock the ball into a star target for +5.

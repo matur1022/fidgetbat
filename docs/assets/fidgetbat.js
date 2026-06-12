@@ -594,7 +594,7 @@
       ['🖱️', 'Click and hold the dashed ring at the knob of the bat, then swing with your mouse.'],
       ['🎯', 'Only the barrel scores. Past the thin white line is the sweet spot — worth 2×.'],
       ['🚫', 'Rapid taps don\'t score. Let the ball fly between hits — spinning earns nothing.'],
-      ['🔄', 'Combos are sweet chains: land sweet-spot hits within 6 seconds of each other. The floor doesn\'t break them — the clock does.'],
+      ['🔄', 'Combos are sweet chains: land sweet-spot hits within 6 seconds of each other. When the chain ends it BANKS bonus hits — longer chains pay way more (x3 = +5, x5 = +14, x10 = +54).'],
       ['⭐', 'Knock the ball into gold stars for +5. Random crits hit for triple.'],
       ['✨', 'The golden ball appears now and then — everything counts 3× while it glows.'],
       ['🏆', 'Each difficulty has its own hit counter and 17 rewards. Anything you earn anywhere can be equipped everywhere.'],
@@ -1249,12 +1249,34 @@
     }
   }
 
+  // Bank-on-break payout: each link is worth more than the last
+  // (x2→+2, x3→+5, x4→+9, x5→+14, x7→+27, x10→+54), so one more sweet
+  // hit is always tempting.
+  function chainBankValue(n) {
+    return n < 2 ? 0 : (n * (n + 1)) / 2 - 1;
+  }
+
   function comboBreak() {
-    if (S.combo >= 3) {
-      showToast(`🔥 Sweet chain x${S.combo}!`);
+    if (S.combo >= 2) {
+      const mult = S.golden ? 3 : 1;
+      const bank = chainBankValue(S.combo) * mult;
+      addHits(bank);
+      floatText(S.w / 2, 64, `CHAIN BANKED +${bank}!`, Math.min(18 + S.combo, 30), '#ffd24a');
+      spawnParticles(S.w / 2, 44, Math.min(8 + S.combo * 2, 30), '#ffd24a');
+      showToast(`💰 Sweet chain x${S.combo} banked: +${bank}${S.golden ? ' (golden 3×!)' : ''}`);
+      bankSound(S.combo);
     }
     S.combo = 0;
     S.comboTimer = 0;
+  }
+
+  // Cash-out: an ascending coin cascade, one note per link (capped), then a ding.
+  function bankSound(n) {
+    const steps = Math.min(n, 7);
+    for (let i = 0; i < steps; i++) {
+      setTimeout(() => blip(660 + i * 110, 0.07, 0.07, 'triangle'), i * 55);
+    }
+    setTimeout(() => blip(1320, 0.18, 0.09, 'sine'), steps * 55 + 40);
   }
 
   function floatText(x, y, str, size, color) {
@@ -1379,10 +1401,11 @@
     ctx.textAlign = 'center';
     ctx.font = '800 16px -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.lineWidth = 3;
+    const label = `SWEET CHAIN x${S.combo} · +${chainBankValue(S.combo)}`;
     ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-    ctx.strokeText(`SWEET CHAIN x${S.combo}`, x, y);
+    ctx.strokeText(label, x, y);
     ctx.fillStyle = '#6ee7ff';
-    ctx.fillText(`SWEET CHAIN x${S.combo}`, x, y);
+    ctx.fillText(label, x, y);
     const w = 96;
     const frac = Math.max(S.comboTimer / COMBO_WINDOW, 0);
     ctx.fillStyle = 'rgba(255,255,255,0.25)';
