@@ -139,6 +139,10 @@
     diff: 'pro',
     prog: { rookie: { hits: 0, comboBest: 0 }, pro: { hits: 0, comboBest: 0 }, allstar: { hits: 0, comboBest: 0 }, legend: { hits: 0, comboBest: 0 } },
     sel: { bat: 'wood', ball: 'baseball', trail: 'none', fx: 'nofx' },
+    stats: { swings: 0, sweet: 0, crits: 0, stars: 0, seconds: 0 },
+    endowed: {},
+    lastGiftDay: '',
+    statSaveAcc: 0,
     ghost: false, muted: false, paused: false,
     freeze: 0, shakeMag: 0,
     golden: false, goldenTtl: 0, goldenTimer: 50,
@@ -155,9 +159,12 @@
 
   function load(cb) {
     try {
-      chrome.storage.local.get(['fb_diff', 'fb_prog', 'fb_sel', 'fb_ghost', 'fb_muted', 'fb_hits', 'fb_selBat', 'fb_selBall', 'fb_comboBest'], (res) => {
+      chrome.storage.local.get(['fb_diff', 'fb_prog', 'fb_sel', 'fb_ghost', 'fb_muted', 'fb_stats', 'fb_endowed', 'fb_giftDay', 'fb_hits', 'fb_selBat', 'fb_selBall', 'fb_comboBest'], (res) => {
         S.ghost = !!res.fb_ghost;
         S.muted = !!res.fb_muted;
+        if (res.fb_stats) S.stats = { ...S.stats, ...res.fb_stats };
+        if (res.fb_endowed) S.endowed = res.fb_endowed;
+        if (res.fb_giftDay) S.lastGiftDay = res.fb_giftDay;
         if (res.fb_prog) {
           for (const d of DIFFICULTIES) {
             if (res.fb_prog[d.id]) S.prog[d.id] = { hits: res.fb_prog[d.id].hits || 0, comboBest: res.fb_prog[d.id].comboBest || 0 };
@@ -185,7 +192,7 @@
 
   function save() {
     try {
-      chrome.storage.local.set({ fb_diff: S.diff, fb_prog: S.prog, fb_sel: S.sel, fb_ghost: S.ghost, fb_muted: S.muted });
+      chrome.storage.local.set({ fb_diff: S.diff, fb_prog: S.prog, fb_sel: S.sel, fb_ghost: S.ghost, fb_muted: S.muted, fb_stats: S.stats, fb_endowed: S.endowed, fb_giftDay: S.lastGiftDay });
     } catch (e) { /* storage unavailable in test harness */ }
   }
 
@@ -207,6 +214,19 @@
     updateHUD();
     save();
     showToast(`${DIFF().label} mode — ${curProg().hits.toLocaleString()} hits`);
+    maybeEndow();
+  }
+
+  // Endowed progress: the first time you visit a fresh track, gift a head
+  // start toward the 5-hit first unlock — journeys already begun get finished.
+  function maybeEndow() {
+    if (S.endowed[S.diff]) return;
+    S.endowed[S.diff] = true;
+    if (curProg().hits < 5) {
+      addHits(3);
+      showToast(`🎁 ${DIFF().label} starter gift: +3 hits — first unlock at 5!`);
+    }
+    save();
   }
 
   // ----- Toggle / lifecycle ----------------------------------------------------
@@ -247,6 +267,23 @@
     S.raf = requestAnimationFrame(loop);
     updateHUD();
     showToast('🎯 Score with the barrel — past the white line is 2×');
+    maybeEndow();
+
+    // Daily welcome-back gift: pure gift framing, never a streak — skipping
+    // days costs nothing. First session of the day starts golden.
+    const today = new Date().toDateString();
+    if (S.lastGiftDay !== today) {
+      S.lastGiftDay = today;
+      save();
+      setTimeout(() => {
+        if (!S.active) return;
+        S.golden = true;
+        S.goldenTtl = 15;
+        showToast('👋 Welcome back — golden ball! 3× hits for 15s');
+        blip(784, 0.15, 0.1, 'triangle');
+        setTimeout(() => blip(1046, 0.2, 0.1, 'triangle'), 120);
+      }, 2600);
+    }
   }
 
   function stop() {
@@ -385,6 +422,8 @@
       fill.style.width = `${pct}%`;
       fill.style.background = d.color;
       chip.title = `Next on ${d.label}: ${next.label} at ${next.hits.toLocaleString()} hits (${pct}%)`;
+      // Near-miss energy: the chip pulses when an unlock is almost in reach.
+      chip.classList.toggle('fb-near', next.hits - hits <= 3);
     } else {
       bar.style.width = '100%';
       pill.title = `${d.label} track complete! — click for rewards`;
@@ -467,6 +506,37 @@
           p.appendChild(itemButton(r, true, null, d.label));
         }
       }
+    }
+
+    // Lifetime stats — completionist fuel and honest transparency in one.
+    const sh = document.createElement('div');
+    sh.className = 'fb-panel-section';
+    sh.textContent = '📊 Lifetime stats';
+    p.appendChild(sh);
+    const totalHits = DIFFICULTIES.reduce((a, d) => a + S.prog[d.id].hits, 0);
+    const secs = Math.floor(S.stats.seconds);
+    const timeStr = secs >= 3600
+      ? `${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m`
+      : `${Math.floor(secs / 60)}m`;
+    const rows = [
+      ['Total hits', totalHits.toLocaleString()],
+      ['Swings', S.stats.swings.toLocaleString()],
+      ['Sweet spots', S.stats.sweet.toLocaleString()],
+      ['Crits', S.stats.crits.toLocaleString()],
+      ['Stars caught', S.stats.stars.toLocaleString()],
+      ['Time fidgeted', timeStr],
+      ['Best combos', DIFFICULTIES.map((d) => `${d.badge}·x${S.prog[d.id].comboBest}`).join('  ')],
+    ];
+    for (const [label, value] of rows) {
+      const row = document.createElement('div');
+      row.className = 'fb-stat-row';
+      const l = document.createElement('span');
+      l.textContent = label;
+      const v = document.createElement('span');
+      v.textContent = value;
+      row.appendChild(l);
+      row.appendChild(v);
+      p.appendChild(row);
     }
   }
 
@@ -921,6 +991,7 @@
     const tipSpeed = Math.hypot(bat.B.x - bat.B.px, bat.B.y - bat.B.py) / dt;
     if (S.grabbing && tipSpeed > S.h * 1.5 && S.swingCool <= 0) {
       S.swingCool = 0.35;
+      S.stats.swings++;
       whoosh();
     }
 
@@ -967,6 +1038,7 @@
       S.target.phase += dt;
       const dx = ball.x - S.target.x, dy = ball.y - S.target.y;
       if (Math.hypot(dx, dy) < ball.r + S.target.r) {
+        S.stats.stars++;
         addHits(5);
         showToast('⭐ Bullseye! +5');
         blip(660, 0.1, 0.1, 'triangle');
@@ -1066,6 +1138,8 @@
       // crits are an occasional surprise bonus (variable-ratio reward).
       const sweet = t >= d.sweetFrom;
       const crit = Math.random() < 0.08;
+      if (sweet) S.stats.sweet++;
+      if (crit) S.stats.crits++;
       const mult = S.golden ? 3 : 1;
       const gained = (sweet ? 2 : 1) * (crit ? 3 : 1) * mult;
       addHits(gained);
@@ -1077,7 +1151,10 @@
         blip(120, 0.12, 0.18, 'square');
       } else if (sweet) {
         floatText(ball.x, ball.y - ball.r * 2, `SWEET +${gained}`, 16, '#6ee7ff');
-        blip(880, 0.09, 0.08, 'triangle');
+        // "Pure contact" — the clean crack of perfect barrel contact,
+        // layered over the bat's own voice.
+        noiseHit(0.03, 0.16, 4800, 2800, 'highpass');
+        tone(1318, 0.16, 0.07, 'sine');
       } else if (S.combo >= 2) {
         floatText(ball.x, ball.y - ball.r * 2, `x${S.combo}`, Math.min(13 + S.combo, 26), color);
       } else {
@@ -1161,6 +1238,11 @@
     if (!S.lastT) S.lastT = t;
     let frame = Math.min((t - S.lastT) / 1000, 1 / 30);
     S.lastT = t;
+    if (!S.paused) {
+      S.stats.seconds += frame;
+      S.statSaveAcc += frame;
+      if (S.statSaveAcc >= 60) { S.statSaveAcc = 0; save(); }
+    }
     if (S.paused) {
       // Externally paused (e.g. the website's demo gate) — keep rendering,
       // hold the world still.

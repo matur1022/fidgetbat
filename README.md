@@ -29,6 +29,10 @@ A physics bat-and-ball fidget toy that overlays the YouTube player. Grab the bot
 - **Crits** — ~8% of hits are critical (+3, red burst, heavy thunk).
 - **Golden ball** — every minute or two the ball turns gold for 12 seconds and all hits count 3×.
 - **Stars** — knock the ball into a star target for +5.
+- **Daily welcome gift** — your first session each day starts with a 15s golden ball. A gift, never a streak: skipping days costs nothing.
+- **Starter gifts** — your first visit to each difficulty grants +3 hits toward its 5-hit first unlock (endowed progress: journeys already begun get finished).
+- **Near-unlock pulse** — the progress chip glows when an unlock is within 3 hits.
+- **Lifetime stats** — the rewards panel tracks total hits, swings, sweet spots, crits, stars, time fidgeted, and best combos per difficulty.
 
 ## Difficulty levels
 
