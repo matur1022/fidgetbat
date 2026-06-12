@@ -10,11 +10,13 @@
   // ----- Difficulty levels --------------------------------------------------
   // Each level: smaller bat & ball, heavier gravity, narrower scoring zones,
   // longer travel gate. Progress (hits, best combo, unlocks) is per-level.
+  // Bat size is uniform across difficulties (the All-Star size felt best) —
+  // difficulty comes from gravity, ball size, scoring zones, and the gate.
   const DIFFICULTIES = [
-    { id: 'rookie',  label: 'Rookie',   badge: 'R', color: '#7ef2a8', batScale: 1.15, ballScale: 1.15, grav: 0.90, barrelFrom: 0.45, sweetFrom: 0.75, gate: 0.45 },
-    { id: 'pro',     label: 'Pro',      badge: 'P', color: '#6ee7ff', batScale: 1.00, ballScale: 1.00, grav: 1.00, barrelFrom: 0.55, sweetFrom: 0.80, gate: 0.55 },
+    { id: 'rookie',  label: 'Rookie',   badge: 'R', color: '#7ef2a8', batScale: 0.80, ballScale: 1.15, grav: 0.90, barrelFrom: 0.45, sweetFrom: 0.75, gate: 0.45 },
+    { id: 'pro',     label: 'Pro',      badge: 'P', color: '#6ee7ff', batScale: 0.80, ballScale: 1.00, grav: 1.00, barrelFrom: 0.55, sweetFrom: 0.80, gate: 0.55 },
     { id: 'allstar', label: 'All-Star', badge: 'A', color: '#c79bff', batScale: 0.80, ballScale: 0.85, grav: 1.15, barrelFrom: 0.62, sweetFrom: 0.85, gate: 0.70 },
-    { id: 'legend',  label: 'Legend',   badge: 'L', color: '#ff7a7a', batScale: 0.62, ballScale: 0.70, grav: 1.30, barrelFrom: 0.68, sweetFrom: 0.88, gate: 0.85 },
+    { id: 'legend',  label: 'Legend',   badge: 'L', color: '#ff7a7a', batScale: 0.80, ballScale: 0.70, grav: 1.30, barrelFrom: 0.68, sweetFrom: 0.88, gate: 0.85 },
   ];
   const DIFF = () => DIFFICULTIES.find((d) => d.id === S.diff);
 

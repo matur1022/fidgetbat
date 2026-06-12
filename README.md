@@ -36,14 +36,14 @@ A physics bat-and-ball fidget toy that overlays the YouTube player. Grab the bot
 
 ## Difficulty levels
 
-Four levels, switchable from the rewards panel. Each is harder: smaller bat and ball, heavier gravity, a narrower scoring barrel and sweet spot, and a longer travel gate between scoring hits.
+Four levels, switchable from the rewards panel. The bat is the same size on every level — difficulty comes from a smaller ball, heavier gravity, a narrower scoring barrel and sweet spot, and a longer travel gate between scoring hits.
 
-| Level | Bat size | Gravity | Scoring zone |
-|-------|----------|---------|--------------|
+| Level | Ball size | Gravity | Scoring zone |
+|-------|-----------|---------|--------------|
 | Rookie 🟢 | 115% | 0.9× | generous |
 | Pro 🔵 | 100% | 1.0× | standard |
-| All-Star 🟣 | 80% | 1.15× | tight |
-| Legend 🔴 | 62% | 1.3× | tiny |
+| All-Star 🟣 | 85% | 1.15× | tight |
+| Legend 🔴 | 70% | 1.3× | tiny |
 
 **Progress is tracked per difficulty** — each level has its own hit counter, best combo, and reward track.
 
