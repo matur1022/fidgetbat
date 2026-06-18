@@ -1199,22 +1199,46 @@
 
   function collideBatBall(dt) {
     const { bat, ball } = S;
-    const ax = bat.A.x, ay = bat.A.y;
-    const abx = bat.B.x - ax, aby = bat.B.y - ay;
-    const len2 = abx * abx + aby * aby || 0.0001;
-    let t = ((ball.x - ax) * abx + (ball.y - ay) * aby) / len2;
-    t = Math.min(Math.max(t, 0), 1);
-    const qx = ax + abx * t, qy = ay + aby * t;
-    let dx = ball.x - qx, dy = ball.y - qy;
-    let dist = Math.hypot(dx, dy);
     const minD = ball.r + bat.thick * 0.5;
-    if (dist >= minD) return;
-    if (dist < 0.0001) { dx = 0; dy = -1; dist = 1; }
-    const nx = dx / dist, ny = dy / dist;
 
-    // Push ball out of the bat.
-    ball.x = qx + nx * minD;
-    ball.y = qy + ny * minD;
+    // Swept (continuous) collision. A static overlap test misses contacts when
+    // the ball OR the bat moves more than the bat's thickness in one step — the
+    // ball is on one side before the step and the other side after, so it phases
+    // through. Instead, sub-sample the motion of BOTH the ball (prev→current)
+    // and the bat (prev pose → current pose) across this step and resolve at the
+    // first sampled contact. This is the anti-tunneling fix.
+    const ball0x = ball.x - ball.vx * dt, ball0y = ball.y - ball.vy * dt;
+    const A0x = bat.A.px, A0y = bat.A.py, B0x = bat.B.px, B0y = bat.B.py;
+    const A1x = bat.A.x, A1y = bat.A.y, B1x = bat.B.x, B1y = bat.B.y;
+
+    const SAMPLES = 8;
+    let t = 0, nx = 0, ny = 0, found = false;
+    let qxF = 0, qyF = 0;
+    for (let i = 1; i <= SAMPLES; i++) {
+      const s = i / SAMPLES;
+      const ax = A0x + (A1x - A0x) * s, ay = A0y + (A1y - A0y) * s;
+      const sbx = B0x + (B1x - B0x) * s, sby = B0y + (B1y - B0y) * s;
+      const px = ball0x + (ball.x - ball0x) * s, py = ball0y + (ball.y - ball0y) * s;
+      const abx = sbx - ax, aby = sby - ay;
+      const len2 = abx * abx + aby * aby || 0.0001;
+      let st = ((px - ax) * abx + (py - ay) * aby) / len2;
+      st = Math.min(Math.max(st, 0), 1);
+      const qx = ax + abx * st, qy = ay + aby * st;
+      let dx = px - qx, dy = py - qy;
+      let dist = Math.hypot(dx, dy);
+      if (dist < minD) {
+        if (dist < 0.0001) { dx = 0; dy = -1; dist = 1; }
+        t = st; nx = dx / dist; ny = dy / dist;
+        qxF = qx; qyF = qy;
+        found = true;
+        break;
+      }
+    }
+    if (!found) return;
+
+    // Place the ball on the bat surface at the moment of contact (no embedding).
+    ball.x = qxF + nx * minD;
+    ball.y = qyF + ny * minD;
 
     // Velocity of the bat surface at the contact point (verlet velocity / dt).
     const vQx = ((bat.A.x - bat.A.px) * (1 - t) + (bat.B.x - bat.B.px) * t) / dt;
