@@ -1014,7 +1014,10 @@
 
   // ----- Physics --------------------------------------------------------------------
 
-  function gravity() { return 2.2 * S.h * DIFF().grav; } // px/s², scales with player size & difficulty
+  // === TEST TOGGLE: zero-gravity "space mode" ===
+  // Set back to false to restore normal gravity. This is the only line to flip.
+  const ZERO_GRAVITY = true;
+  function gravity() { return ZERO_GRAVITY ? 0 : 2.2 * S.h * DIFF().grav; } // px/s², scales with player size & difficulty
 
   function verlet(p, dt, g) {
     const nx = p.x + (p.x - p.px) * 0.999 + 0;
