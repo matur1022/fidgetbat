@@ -33,6 +33,17 @@
   }
   h1, h2, h3, .display { font-family: 'Outfit', 'Space Grotesk', sans-serif; }
 
+  .topnote {
+    position: relative; z-index: 5; text-align: center;
+    background: linear-gradient(90deg, rgba(126,242,168,0.14), rgba(110,231,255,0.14));
+    border-bottom: 1px solid var(--line);
+    color: var(--ink); font-size: 13.5px; line-height: 1.5;
+    padding: 10px 18px;
+  }
+  .topnote b { color: var(--green); }
+  .topnote a { color: var(--cyan); text-decoration: underline; font-weight: 600; }
+  @media (max-width: 560px) { .topnote { font-size: 12.5px; padding: 9px 14px; } }
+
   /* ---- animated background blobs ---- */
   .blobs { position: fixed; inset: 0; z-index: -2; overflow: hidden; }
   .blob {
@@ -207,17 +218,6 @@
   @keyframes watch { from { width: 12%; } to { width: 96%; } }
   .demo-hint { text-align: center; color: var(--dim); font-size: 14px; padding: 14px 4px 4px; }
   .demo-hint b { color: var(--gold); }
-  .demo-gate {
-    position: absolute; inset: 0; z-index: 10001; display: none;
-    align-items: center; justify-content: center; text-align: center;
-    background: rgba(8, 8, 14, 0.82); backdrop-filter: blur(8px);
-  }
-  .demo-gate.show { display: flex; animation: gate-in 0.35s ease; }
-  @keyframes gate-in { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: none; } }
-  .dg-inner { max-width: 420px; padding: 24px; }
-  .dg-emoji { font-size: 38px; margin-bottom: 12px; }
-  .dg-inner h3 { font-size: 28px; margin-bottom: 10px; }
-  .dg-inner p { color: var(--dim); font-size: 15px; line-height: 1.55; margin-bottom: 22px; }
 
   /* ---- science cards ---- */
   .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 18px; margin-top: 42px; }
@@ -307,7 +307,6 @@
     .cta-ghost { font-size: 14px; padding: 13px 18px; }
     .marquee { margin-top: 36px; }
     .demo-shell { padding: 10px; }
-    .demo-gate .cta { font-size: 14px; padding: 12px 18px; }
     .dg-inner h3 { font-size: 22px; }
     .ladder { gap: 3px; height: 150px; }
     .rung .num { display: none; }
@@ -334,6 +333,10 @@
 </style>
 </head>
 <body>
+
+<div class="topnote">
+  ♾️ Play the demo as long as you want — but <b>your hits &amp; unlocks reset every time you reload</b>. <a href="fidgetbat.zip" download>Download the extension</a> to keep your progress forever.
+</div>
 
 <div class="blobs">
   <div class="blob b1"></div>
@@ -394,14 +397,6 @@
       </div>
       <div class="yt-bar"></div>
       <div class="yt-progress"><i></i></div>
-      <div class="demo-gate" id="demo-gate">
-        <div class="dg-inner">
-          <div class="dg-emoji">⚾🔥</div>
-          <h3>Nice swinging!</h3>
-          <p>That's the demo limit — to play more (and keep your hits forever), get the extension.</p>
-          <a class="cta" href="fidgetbat.zip" download>⬇ Download the Chrome extension</a>
-        </div>
-      </div>
     </div>
     <p class="demo-hint">Grab the <b>dashed ring</b> → swing → hit with the barrel. Sound on 🔊 — every bat has its own sound.</p>
   </div>
@@ -483,38 +478,22 @@
   // ---- chrome.* stub so the real extension content script runs as a web demo ----
   window.chrome = window.chrome || {};
   window.chrome.runtime = { onMessage: { addListener(fn) { window.__fbOnMessage = fn; } } };
+  // Ephemeral, in-memory only — the demo never persists, so reloading the
+  // page wipes all progress. That's the hook: to KEEP your hits and unlocks,
+  // download the extension.
+  const demoStore = {};
   window.chrome.storage = {
     local: {
-      get(keys, cb) { cb(JSON.parse(localStorage.fb_store || '{}')); },
-      set(obj) {
-        const cur = JSON.parse(localStorage.fb_store || '{}');
-        Object.assign(cur, obj);
-        localStorage.fb_store = JSON.stringify(cur);
-      },
+      get(keys, cb) { cb({ ...demoStore }); },
+      set(obj) { Object.assign(demoStore, obj); },
     },
   };
 </script>
 <script src="assets/fidgetbat.js"></script>
 <script>
-  // Auto-start the demo once the player exists.
+  // Auto-start the demo once the player exists. Play as long as you like —
+  // the only catch is progress doesn't save here (see the reset note).
   setTimeout(() => { if (window.__fidgetBatToggle) window.__fidgetBatToggle(); }, 300);
-
-  // Demo gate: after a good long play this visit, pause (don't remove!) the
-  // toy and pitch the extension — the frozen game stays visible behind it.
-  const DEMO_HIT_LIMIT = 75;
-  let demoStartHits = null;
-  const gateEl = document.getElementById('demo-gate');
-  const gateTimer = setInterval(() => {
-    const S = window.__fidgetBatState;
-    if (!S || !S.active) return;
-    const total = Object.values(S.prog).reduce((a, p) => a + p.hits, 0);
-    if (demoStartHits === null) demoStartHits = total;
-    if (total - demoStartHits >= DEMO_HIT_LIMIT) {
-      clearInterval(gateTimer);
-      window.__fidgetBatPause(true); // freeze in place, keep it on screen
-      gateEl.classList.add('show');
-    }
-  }, 400);
 
   // Hero: a mini game-bat dangles from the cursor (same physics idea as the
   // real toy — pinned handle, swinging barrel) + doodad parallax.
